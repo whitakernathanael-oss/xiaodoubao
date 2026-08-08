@@ -100,6 +100,34 @@ export type ThemeValidationResult =
   | { ok: true; theme: Theme }
   | { ok: false; errors: string[] };
 
+export const ADAPTER_REGION_KEYS = [
+  "appRoot",
+  "sidebar",
+  "chatArea",
+  "messageUser",
+  "messageAssistant",
+  "composer",
+  "buttons",
+  "settingsPanel"
+] as const;
+
+export type AdapterRegion = typeof ADAPTER_REGION_KEYS[number];
+export type AdapterPageState = "chat" | "settings";
+
+export interface DoubaoAdapter {
+  adapterVersion: 1;
+  targets: Array<{ kind: "main" | "settings"; urlPrefix: string }>;
+  regions: Record<AdapterRegion, string[]>;
+  pageStates: Record<AdapterPageState, { requiredRegions: AdapterRegion[] }>;
+}
+
+export interface AdapterProbe {
+  status: "compatible" | "partial" | "incompatible";
+  matches: Partial<Record<AdapterRegion, { selector: string; count: number }>>;
+  missingRequired: AdapterRegion[];
+  missingOptional: AdapterRegion[];
+}
+
 export function isThemeId(value: string): boolean {
   return THEME_ID_PATTERN.test(value);
 }

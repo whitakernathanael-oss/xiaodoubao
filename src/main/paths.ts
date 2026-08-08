@@ -11,7 +11,7 @@ export function resolveDataPaths(localAppData = process.env.LOCALAPPDATA): {
   return {
     root,
     themes: path.join(root, "themes"),
-    adapter: path.join(root, "doubao-adapter.json"),
+    adapter: path.join(root, "adapter", "doubao-adapter.json"),
     logs: path.join(root, "logs")
   };
 }

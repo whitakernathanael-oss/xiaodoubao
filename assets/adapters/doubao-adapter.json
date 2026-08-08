@@ -1,0 +1,20 @@
+{
+  "adapterVersion": 1,
+  "targets": [
+    { "kind": "main", "urlPrefix": "doubao://doubao-chat/chat" }
+  ],
+  "regions": {
+    "appRoot": [],
+    "sidebar": [],
+    "chatArea": [],
+    "messageUser": [],
+    "messageAssistant": [],
+    "composer": [],
+    "buttons": [],
+    "settingsPanel": []
+  },
+  "pageStates": {
+    "chat": { "requiredRegions": ["appRoot", "chatArea"] },
+    "settings": { "requiredRegions": ["appRoot", "settingsPanel"] }
+  }
+}
