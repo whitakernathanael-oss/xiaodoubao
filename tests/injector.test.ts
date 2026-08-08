@@ -26,6 +26,11 @@ describe("theme injection payloads", () => {
     expect(payload).toContain("MutationObserver");
     expect(payload).toContain("URL.createObjectURL");
     expect(payload).toContain("missingRequired");
+    expect(payload).toContain("--dbs-sidebar-radius");
+    expect(payload).toContain("--dbs-chat-shadow");
+    expect(payload).toContain("--dbs-composer-focus");
+    expect(payload).toContain("--dbs-button-radius");
+    expect(payload).toContain("--dbs-wallpaper-overlay-opacity");
     expect(() => new Function(`return ${payload}`)).not.toThrow();
   });
 

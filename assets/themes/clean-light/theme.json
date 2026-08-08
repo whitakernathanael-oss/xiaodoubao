@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "id": "clean-light",
+  "name": "清透晨光",
+  "author": "Doubao AutoSkin",
+  "wallpaper": {
+    "file": "wallpaper.png",
+    "fit": "cover",
+    "positionX": 50,
+    "positionY": 50,
+    "scale": 100,
+    "blur": 0,
+    "brightness": 100,
+    "overlayColor": "#fffaf4",
+    "overlayOpacity": 0.12
+  },
+  "palette": { "ink": "#292832", "mutedInk": "#6f6d78", "accent": "#6c58d7", "surface": "#fffaf5" },
+  "regions": {
+    "sidebar": { "backgroundColor": "#fffaf5", "opacity": 0.88, "textColor": "#292832", "selectedColor": "#eee9ff", "borderColor": "#e2dce8", "borderRadius": 14 },
+    "chat": { "backgroundColor": "#fffdf9", "opacity": 0.7, "userBubbleColor": "#e9e3ff", "assistantBubbleColor": "#fffaf5", "textColor": "#292832", "borderColor": "#e2dce8", "borderRadius": 17, "shadowStrength": 0.1 },
+    "composer": { "backgroundColor": "#ffffff", "opacity": 0.94, "textColor": "#292832", "borderColor": "#ddd5e5", "borderRadius": 17, "focusColor": "#6c58d7" },
+    "buttons": { "primaryColor": "#6c58d7", "backgroundColor": "#fffaf5", "textColor": "#292832", "borderColor": "#ddd5e5", "borderRadius": 11, "shadowStrength": 0.12 },
+    "settings": { "panelColor": "#fffaf5", "opacity": 0.95 }
+  }
+}

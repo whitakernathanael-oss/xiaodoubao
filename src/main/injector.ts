@@ -89,13 +89,30 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     "--dbs-surface": theme.palette.surface,
     "--dbs-sidebar-bg": theme.regions.sidebar.backgroundColor,
     "--dbs-sidebar-opacity": String(theme.regions.sidebar.opacity),
+    "--dbs-sidebar-text": theme.regions.sidebar.textColor,
+    "--dbs-sidebar-selected": theme.regions.sidebar.selectedColor,
+    "--dbs-sidebar-border": theme.regions.sidebar.borderColor,
+    "--dbs-sidebar-radius": `${theme.regions.sidebar.borderRadius}px`,
     "--dbs-chat-bg": theme.regions.chat.backgroundColor,
     "--dbs-chat-opacity": String(theme.regions.chat.opacity),
     "--dbs-user-bubble": theme.regions.chat.userBubbleColor,
     "--dbs-assistant-bubble": theme.regions.chat.assistantBubbleColor,
+    "--dbs-chat-text": theme.regions.chat.textColor,
+    "--dbs-chat-border": theme.regions.chat.borderColor,
+    "--dbs-chat-radius": `${theme.regions.chat.borderRadius}px`,
+    "--dbs-chat-shadow": String(theme.regions.chat.shadowStrength),
     "--dbs-composer-bg": theme.regions.composer.backgroundColor,
     "--dbs-composer-opacity": String(theme.regions.composer.opacity),
+    "--dbs-composer-text": theme.regions.composer.textColor,
+    "--dbs-composer-border": theme.regions.composer.borderColor,
+    "--dbs-composer-radius": `${theme.regions.composer.borderRadius}px`,
+    "--dbs-composer-focus": theme.regions.composer.focusColor,
     "--dbs-button-primary": theme.regions.buttons.primaryColor,
+    "--dbs-button-bg": theme.regions.buttons.backgroundColor,
+    "--dbs-button-text": theme.regions.buttons.textColor,
+    "--dbs-button-border": theme.regions.buttons.borderColor,
+    "--dbs-button-radius": `${theme.regions.buttons.borderRadius}px`,
+    "--dbs-button-shadow": String(theme.regions.buttons.shadowStrength),
     "--dbs-settings-bg": theme.regions.settings.panelColor,
     "--dbs-settings-opacity": String(theme.regions.settings.opacity)
   };
@@ -131,14 +148,17 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
   }
   style.textContent = `
 #doubao-autoskin-wallpaper { pointer-events: none !important; }
+#doubao-autoskin-wallpaper::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--dbs-wallpaper-overlay); opacity: var(--dbs-wallpaper-overlay-opacity); }
 html.doubao-skin body, html.doubao-skin .dbs-app-root { background: transparent !important; position: relative; }
 html.doubao-skin .dbs-app-root { z-index: 1; color: var(--dbs-ink) !important; }
-html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-sidebar-bg) calc(var(--dbs-sidebar-opacity) * 100%), transparent) !important; color: var(--dbs-ink) !important; }
-html.doubao-skin .dbs-chat-area { background: color-mix(in srgb, var(--dbs-chat-bg) calc(var(--dbs-chat-opacity) * 100%), transparent) !important; }
-html.doubao-skin .dbs-message-user { background: var(--dbs-user-bubble) !important; }
-html.doubao-skin .dbs-message-assistant { background: var(--dbs-assistant-bubble) !important; }
-html.doubao-skin .dbs-composer { background: color-mix(in srgb, var(--dbs-composer-bg) calc(var(--dbs-composer-opacity) * 100%), transparent) !important; }
-html.doubao-skin .dbs-button { --primary-color: var(--dbs-button-primary); }
+html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-sidebar-bg) calc(var(--dbs-sidebar-opacity) * 100%), transparent) !important; color: var(--dbs-sidebar-text) !important; border-color: var(--dbs-sidebar-border) !important; border-radius: var(--dbs-sidebar-radius) !important; }
+html.doubao-skin .dbs-sidebar :is([aria-selected="true"], [data-state="active"], .active) { background: var(--dbs-sidebar-selected) !important; }
+html.doubao-skin .dbs-chat-area { background: color-mix(in srgb, var(--dbs-chat-bg) calc(var(--dbs-chat-opacity) * 100%), transparent) !important; color: var(--dbs-chat-text) !important; }
+html.doubao-skin .dbs-message-user { background: var(--dbs-user-bubble) !important; color: var(--dbs-chat-text) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
+html.doubao-skin .dbs-message-assistant { background: var(--dbs-assistant-bubble) !important; color: var(--dbs-chat-text) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
+html.doubao-skin .dbs-composer { background: color-mix(in srgb, var(--dbs-composer-bg) calc(var(--dbs-composer-opacity) * 100%), transparent) !important; color: var(--dbs-composer-text) !important; border: 1px solid var(--dbs-composer-border) !important; border-radius: var(--dbs-composer-radius) !important; }
+html.doubao-skin .dbs-composer:focus-within { border-color: var(--dbs-composer-focus) !important; }
+html.doubao-skin .dbs-button { --primary-color: var(--dbs-button-primary); background-color: var(--dbs-button-bg) !important; color: var(--dbs-button-text) !important; border-color: var(--dbs-button-border) !important; border-radius: var(--dbs-button-radius) !important; box-shadow: 0 6px 20px rgb(0 0 0 / calc(var(--dbs-button-shadow) * .3)) !important; }
 html.doubao-skin .dbs-settings-panel { background: color-mix(in srgb, var(--dbs-settings-bg) calc(var(--dbs-settings-opacity) * 100%), transparent) !important; }
 ${extraCss}`;
 
