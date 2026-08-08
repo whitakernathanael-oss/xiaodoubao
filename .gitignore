@@ -1,0 +1,7 @@
+.worktrees/
+node_modules/
+out/
+.vite/
+coverage/
+*.log
+*.tmp
