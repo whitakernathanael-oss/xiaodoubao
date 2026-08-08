@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { access, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { validateExtraCss } from "./css-validator";
 import {
   MAX_WALLPAPER_BYTES,
   MAX_WALLPAPER_EDGE,
@@ -12,6 +13,13 @@ import {
 export interface ThemeAsset {
   name: string;
   bytes: Uint8Array;
+}
+
+export interface ThemeBundle {
+  theme: Theme;
+  asset: ThemeAsset;
+  extraCss?: string;
+  readOnly: boolean;
 }
 
 function summary(theme: Theme, readOnly: boolean): ThemeSummary {
@@ -96,6 +104,17 @@ export class ThemeStore {
     return exists(path.join(this.builtInRoot, id, "theme.json"));
   }
 
+  async has(id: string): Promise<boolean> {
+    return await exists(path.join(this.userRoot, id, "theme.json")) || await this.builtIn(id);
+  }
+
+  async nextAvailableId(id: string): Promise<string> {
+    if (!await this.has(id)) return id;
+    let suffix = 2;
+    while (await this.has(`${id}-${suffix}`)) suffix += 1;
+    return `${id}-${suffix}`;
+  }
+
   private async readFrom(root: string, id: string): Promise<Theme> {
     const parsed: unknown = JSON.parse(await readFile(path.join(root, id, "theme.json"), "utf8"));
     const result = validateTheme(parsed);
@@ -130,12 +149,16 @@ export class ThemeStore {
     return this.readFrom(this.builtInRoot, id);
   }
 
-  async save(input: Theme, asset: ThemeAsset): Promise<ThemeSummary> {
+  async save(input: Theme, asset: ThemeAsset, extraCss?: string): Promise<ThemeSummary> {
     const result = validateTheme(input);
     if (!result.ok) throw new Error(`Invalid theme: ${result.errors.join("; ")}`);
     const theme = result.theme;
     if (await this.builtIn(theme.id)) throw new Error("Built-in themes are read-only");
     validateAsset(theme, asset);
+    if (extraCss !== undefined) {
+      const cssResult = validateExtraCss(extraCss, theme.id);
+      if (!cssResult.ok) throw new Error(`Invalid extra.css: ${cssResult.errors.join("; ")}`);
+    }
     await mkdir(this.userRoot, { recursive: true });
 
     const destination = path.join(this.userRoot, theme.id);
@@ -146,6 +169,7 @@ export class ThemeStore {
       await mkdir(temporary);
       await writeFile(path.join(temporary, "theme.json"), `${JSON.stringify(theme, null, 2)}\n`);
       await writeFile(path.join(temporary, asset.name), asset.bytes);
+      if (extraCss !== undefined) await writeFile(path.join(temporary, "extra.css"), extraCss, "utf8");
       if (await exists(destination)) {
         await rename(destination, backup);
         movedOld = true;
@@ -166,12 +190,27 @@ export class ThemeStore {
   }
 
   async duplicate(id: string): Promise<ThemeSummary> {
-    const source = await this.load(id);
-    let suffix = 2;
-    while (await exists(path.join(this.userRoot, `${source.id}-${suffix}`)) || await this.builtIn(`${source.id}-${suffix}`)) suffix += 1;
-    const copy: Theme = { ...source, id: `${source.id}-${suffix}`, name: `${source.name} Copy` };
-    const sourceRoot = await exists(path.join(this.userRoot, id, "theme.json")) ? this.userRoot : this.builtInRoot;
-    const bytes = await readFile(path.join(sourceRoot, id, source.wallpaper.file));
-    return this.save(copy, { name: copy.wallpaper.file, bytes });
+    const bundle = await this.readBundle(id);
+    const copyId = await this.nextAvailableId(bundle.theme.id);
+    const copy: Theme = { ...bundle.theme, id: copyId, name: `${bundle.theme.name} Copy` };
+    const extraCss = bundle.extraCss?.split(`.theme-${bundle.theme.id}`).join(`.theme-${copyId}`);
+    return this.save(copy, bundle.asset, extraCss);
+  }
+
+  async readBundle(id: string): Promise<ThemeBundle> {
+    const inUserRoot = await exists(path.join(this.userRoot, id, "theme.json"));
+    const root = inUserRoot ? this.userRoot : this.builtInRoot;
+    const theme = await this.readFrom(root, id);
+    const asset = {
+      name: theme.wallpaper.file,
+      bytes: await readFile(path.join(root, id, theme.wallpaper.file))
+    };
+    let extraCss: string | undefined;
+    try {
+      extraCss = await readFile(path.join(root, id, "extra.css"), "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    return { theme, asset, extraCss, readOnly: !inUserRoot };
   }
 }
