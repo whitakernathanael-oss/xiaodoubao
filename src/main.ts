@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import { createApplicationRuntime, type ApplicationRuntime } from "./main/app-services";
 import { registerIpcHandlers } from "./main/ipc-handlers";
@@ -7,12 +8,37 @@ let mainWindow: BrowserWindow | undefined;
 let runtime: ApplicationRuntime | undefined;
 let removeHandlers: (() => void) | undefined;
 
+app.disableHardwareAcceleration();
+
+function handleSquirrelEvent(): boolean {
+  if (process.platform !== "win32") return false;
+  const event = process.argv[1];
+  if (!event?.startsWith("--squirrel-")) return false;
+  const applicationFolder = path.dirname(process.execPath);
+  const updateExe = path.resolve(applicationFolder, "..", "Update.exe");
+  const executableName = path.basename(process.execPath);
+  let args: string[] | undefined;
+  if (event === "--squirrel-install" || event === "--squirrel-updated") {
+    args = ["--createShortcut", executableName];
+  } else if (event === "--squirrel-uninstall") {
+    args = ["--removeShortcut", executableName];
+  }
+  if (args) {
+    try {
+      const child = spawn(updateExe, args, { detached: true, stdio: "ignore", windowsHide: true });
+      child.unref();
+    } catch { /* Squirrel will report installer failure. */ }
+  }
+  setTimeout(() => app.quit(), 800);
+  return true;
+}
+
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
-    width: 1180,
-    height: 760,
-    minWidth: 960,
-    minHeight: 640,
+    width: 1120,
+    height: 720,
+    minWidth: 760,
+    minHeight: 560,
     title: "豆包皮肤版",
     backgroundColor: "#efeff3",
     webPreferences: {
@@ -43,17 +69,19 @@ function createWindow(): BrowserWindow {
   return window;
 }
 
-app.whenReady().then(async () => {
-  runtime = await createApplicationRuntime();
-  removeHandlers = registerIpcHandlers(runtime.services, ipcMain);
-  mainWindow = createWindow();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow();
+if (!handleSquirrelEvent()) {
+  app.whenReady().then(async () => {
+    runtime = await createApplicationRuntime();
+    removeHandlers = registerIpcHandlers(runtime.services, ipcMain);
+    mainWindow = createWindow();
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow();
+    });
+  }).catch((error) => {
+    dialog.showErrorBox("豆包皮肤版启动失败", error instanceof Error ? error.message : String(error));
+    app.quit();
   });
-}).catch((error) => {
-  dialog.showErrorBox("豆包皮肤版启动失败", error instanceof Error ? error.message : String(error));
-  app.quit();
-});
+}
 
 app.on("before-quit", () => {
   removeHandlers?.();

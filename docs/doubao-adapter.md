@@ -3,6 +3,10 @@
 `assets/adapters/doubao-adapter.json` 是工具唯一加载的内置适配器。用户可以在
 `%LOCALAPPDATA%\DoubaoSkin\adapter\doubao-adapter.json` 放置完整替代文件；两者不会合并，工具也不会联网更新。
 
+当前内置选择器于 2026-08-08 在豆包 2.22.7 实测。聊天页使用 `#root`、
+`flow_chat_sidebar`、`main[data-container-name="main"]` 和 `#input-engine-container` 等稳定结构属性；
+设置面板使用带 `role="dialog"` 的 `data-slot="dialog-content"`。
+
 ## 安全边界
 
 - 只允许明确列出的 `doubao://` 页面目标。

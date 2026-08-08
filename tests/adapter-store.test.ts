@@ -69,12 +69,31 @@ describe("Doubao adapter", () => {
     expect(loaded.regions.appRoot).toEqual(["#custom-root"]);
   });
 
-  it("ships a conservative adapter that fails closed before DOM measurement", async () => {
+  it("ships the measured Doubao 2.22.7 selectors and still fails closed if roots disappear", async () => {
     const packaged = path.join(process.cwd(), "assets", "adapters", "doubao-adapter.json");
     const loaded = await new AdapterStore(userPath, packaged).load();
-    const probe = probePage(() => 0, loaded, "chat");
-    expect(probe.status).toBe("incompatible");
-    expect(probe.missingRequired).toEqual(["appRoot", "chatArea"]);
+    expect(loaded.regions).toMatchObject({
+      appRoot: ["#root"],
+      sidebar: ['[data-testid="flow_chat_sidebar"]'],
+      chatArea: ['main[data-container-name="main"]'],
+      messageUser: ['[data-testid="send_message"] [data-testid="message_text_content"]'],
+      messageAssistant: ['[data-testid="receive_message"] [data-testid="message_text_content"]'],
+      composer: ["#input-engine-container"],
+      buttons: ['button[data-dbx-name="button"]'],
+      settingsPanel: ['[role="dialog"][data-slot="dialog-content"]']
+    });
+
+    const observed = new Set([
+      loaded.regions.appRoot[0], loaded.regions.sidebar[0], loaded.regions.chatArea[0],
+      loaded.regions.messageUser[0], loaded.regions.messageAssistant[0], loaded.regions.composer[0],
+      loaded.regions.buttons[0]
+    ]);
+    const compatible = probePage((selector) => observed.has(selector) ? 1 : 0, loaded, "chat");
+    expect(compatible.missingRequired).toEqual([]);
+
+    const absent = probePage(() => 0, loaded, "chat");
+    expect(absent.status).toBe("incompatible");
+    expect(absent.missingRequired).toEqual(["appRoot", "chatArea"]);
   });
 
   it("does not fall back to the packaged adapter when a user adapter is invalid", async () => {

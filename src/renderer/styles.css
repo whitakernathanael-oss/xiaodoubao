@@ -6,7 +6,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 960px; min-height: 640px; background: #efeff3; }
+body { margin: 0; min-width: 0; min-height: 0; background: #efeff3; }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .42; }
@@ -53,7 +53,7 @@ button:disabled { cursor: not-allowed; opacity: .42; }
 [data-role="preview"] { height: 100%; overflow: hidden; border-radius: 11px; }
 .stage__hint { margin: 9px 0 0; color: #92929c; font-size: 10px; text-align: center; }
 
-.preview { position: relative; display: grid; height: 100%; min-height: 400px; color: var(--p-ink); background: var(--p-surface); isolation: isolate; }
+.preview { position: relative; display: grid; height: 100%; min-height: 280px; color: var(--p-ink); background: var(--p-surface); isolation: isolate; }
 .preview--chat { grid-template-columns: 29% 71%; }.preview--settings { grid-template-columns: 32% 68%; }
 .preview__wallpaper, .preview__overlay { position: absolute; inset: 0; pointer-events: none; z-index: -2; }
 .preview__wallpaper { background-image: var(--p-wallpaper, linear-gradient(145deg,#d9e4ff,#f8dde8)); background-size: var(--p-wallpaper-fit); background-position: var(--p-wallpaper-x) var(--p-wallpaper-y); filter: blur(var(--p-wallpaper-blur)) brightness(var(--p-wallpaper-brightness)); transform: scale(var(--p-wallpaper-scale)); }
@@ -83,6 +83,8 @@ button:disabled { cursor: not-allowed; opacity: .42; }
 .actionbar { border-top:1px solid #dedee5; }.actionbar > div { display:flex;gap:8px; }.actionbar button { padding:9px 13px;border:1px solid #dddde5;border-radius:9px;background:#fff;color:#5d5d68;font-size:11px; }.actionbar button.danger { color:#bf5b65; }.actionbar button.primary { border-color:#694fd3;background:linear-gradient(135deg,#7257df,#8a62de);color:#fff;box-shadow:0 6px 16px rgba(95,67,202,.23); }
 
 @media (max-width: 1100px) {
-  .workspace { grid-template-columns: 190px minmax(430px,1fr) 260px; }
-  .stage { padding-inline: 15px; }
+  .workspace { grid-template-columns: 160px minmax(300px,1fr) 220px; }
+  .stage { padding-inline: 12px; }
+  .theme-panel { padding-inline: 9px; }
+  .control-panel__head, .region-controls { padding-inline: 12px; }
 }

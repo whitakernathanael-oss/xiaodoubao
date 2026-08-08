@@ -12,7 +12,7 @@ type SpawnDoubao = (
   args: string[],
   options: { detached: true; stdio: "ignore"; windowsHide: true }
 ) => { pid?: number; unref(): void };
-type PowerShellRunner = () => Promise<string>;
+type RunningProbe = () => Promise<boolean>;
 
 export type DoubaoPortStatus =
   | { kind: "connected"; targets: CdpTarget[] }
@@ -89,32 +89,10 @@ export async function probeDoubaoPort(
   }
 }
 
-async function runGracefulCloseScript(): Promise<string> {
-  const script = [
-    "$processes = Get-Process -Name Doubao -ErrorAction SilentlyContinue",
-    "if (-not $processes) { Write-Output 'not-running'; exit 0 }",
-    "$null = $processes | Where-Object { $_.MainWindowHandle -ne 0 } | ForEach-Object { $_.CloseMainWindow() }",
-    "$deadline = [DateTime]::UtcNow.AddSeconds(10)",
-    "while ((Get-Process -Name Doubao -ErrorAction SilentlyContinue) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 200 }",
-    "if (Get-Process -Name Doubao -ErrorAction SilentlyContinue) { Write-Output 'still-running'; exit 2 }",
-    "Write-Output 'closed'"
-  ].join("; ");
-  try {
-    const result = await promisify(execFile)("powershell.exe", [
-      "-NoProfile", "-NonInteractive", "-Command", script
-    ], { windowsHide: true, timeout: 12_000 });
-    return result.stdout.trim();
-  } catch (error) {
-    const stdout = (error as { stdout?: string }).stdout?.trim();
-    return stdout || "still-running";
-  }
-}
-
 export async function closeDoubaoGracefully(
   confirmed: boolean,
-  runPowerShell: PowerShellRunner = runGracefulCloseScript
+  isRunning: RunningProbe = doubaoIsRunning
 ): Promise<boolean> {
   if (!confirmed) throw new Error("Explicit restart confirmation is required");
-  const result = await runPowerShell();
-  return result === "closed" || result === "not-running";
+  return !await isRunning();
 }

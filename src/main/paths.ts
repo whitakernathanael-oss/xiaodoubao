@@ -1,5 +1,16 @@
 import path from "node:path";
 
+export function resolveBundledPaths(isPackaged: boolean, appPath: string, resourcesPath: string): {
+  themes: string;
+  adapter: string;
+} {
+  const root = isPackaged ? resourcesPath : path.join(appPath, "assets");
+  return {
+    themes: path.join(root, "themes"),
+    adapter: path.join(root, "adapters", "doubao-adapter.json")
+  };
+}
+
 export function resolveDataPaths(localAppData = process.env.LOCALAPPDATA): {
   root: string;
   themes: string;

@@ -42,9 +42,13 @@ describe("Doubao launcher", () => {
   });
 
   it("requires explicit confirmation before graceful close", async () => {
-    const run = vi.fn(async () => "closed");
-    await expect(closeDoubaoGracefully(false, run)).rejects.toThrow(/confirmation/i);
-    expect(run).not.toHaveBeenCalled();
-    await expect(closeDoubaoGracefully(true, run)).resolves.toBe(true);
+    const isRunning = vi.fn(async () => false);
+    await expect(closeDoubaoGracefully(false, isRunning)).rejects.toThrow(/confirmation/i);
+    expect(isRunning).not.toHaveBeenCalled();
+  });
+
+  it("continues only after the user has exited Doubao normally", async () => {
+    await expect(closeDoubaoGracefully(true, async () => false)).resolves.toBe(true);
+    await expect(closeDoubaoGracefully(true, async () => true)).resolves.toBe(false);
   });
 });

@@ -13,7 +13,7 @@ import {
 } from "./doubao-launcher";
 import { Injector } from "./injector";
 import { PrivacyLog } from "./log";
-import { resolveDataPaths } from "./paths";
+import { resolveBundledPaths, resolveDataPaths } from "./paths";
 import { ThemeArchive } from "./theme-archive";
 import { ThemeStore } from "./theme-store";
 import { SkinWorkflow } from "./workflow";
@@ -86,11 +86,11 @@ export interface ApplicationRuntime {
 
 export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
   const data = resolveDataPaths();
-  const packagedRoot = app.getAppPath();
+  const bundled = resolveBundledPaths(app.isPackaged, app.getAppPath(), process.resourcesPath);
   const settingsStore = new SettingsStore(data.settings);
   let settings = await settingsStore.load();
-  const themeStore = new ThemeStore(data.themes, path.join(packagedRoot, "assets", "themes"));
-  const adapterStore = new AdapterStore(data.adapter, path.join(packagedRoot, "assets", "adapters", "doubao-adapter.json"));
+  const themeStore = new ThemeStore(data.themes, bundled.themes);
+  const adapterStore = new AdapterStore(data.adapter, bundled.adapter);
   const archive = new ThemeArchive(themeStore);
   const log = new PrivacyLog(data.log);
   const workflow = new SkinWorkflow({
@@ -191,9 +191,9 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
       const response = await dialog.showMessageBox({
         type: "warning",
         title: "重启豆包",
-        message: "豆包需要重启才能启用皮肤连接。",
-        detail: "请先保存豆包中未完成的内容。工具只会正常关闭窗口，不会强制结束进程。",
-        buttons: ["取消", "重启豆包"],
+        message: "请先从系统托盘正常退出豆包。",
+        detail: "保存未完成的内容，在任务栏右下角右键豆包图标，选择“退出”。完成后回到这里继续；工具不会强制结束进程。",
+        buttons: ["取消", "已退出豆包，继续"],
         defaultId: 0,
         cancelId: 0
       });
