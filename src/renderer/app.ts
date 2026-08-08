@@ -134,6 +134,18 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
 
   const setStatus = (value: unknown) => { status.textContent = statusLabel(value); };
 
+  const startOrConnect = async (): Promise<void> => {
+    let result = await api.startDoubao();
+    const details = result && typeof result === "object" ? result as { kind?: string; reason?: string } : {};
+    if (details.kind === "restart-required") {
+      result = await api.confirmRestart();
+    } else if (details.kind === "error" && details.reason === "doubao-not-found") {
+      const executable = await api.chooseDoubaoExecutable();
+      if (executable) result = await api.startDoubao();
+    }
+    setStatus(result);
+  };
+
   const ensureEditable = async (): Promise<void> => {
     if (!selectedSummary?.readOnly) return;
     const copy = await api.duplicateTheme(selectedSummary.id);
@@ -286,7 +298,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     setStatus(await api.applyTheme(id));
   })().catch((error) => setStatus({ kind: "error", error })));
   root.querySelector("[data-action='restore']")!.addEventListener("click", () => void api.restoreOfficial().then(() => setStatus({ kind: "not-running" })));
-  root.querySelector("[data-action='start']")!.addEventListener("click", () => void api.startDoubao().then(setStatus));
+  root.querySelector("[data-action='start']")!.addEventListener("click", () => void startOrConnect().catch((error) => setStatus({ kind: "error", error })));
   root.querySelector("[data-action='duplicate']")!.addEventListener("click", () => void api.duplicateTheme(state.theme.id).then(async (copy) => {
     summaries = await api.listThemes(); await loadTheme(copy.id);
   }));

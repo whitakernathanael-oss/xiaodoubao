@@ -4,7 +4,8 @@ export function resolveDataPaths(localAppData = process.env.LOCALAPPDATA): {
   root: string;
   themes: string;
   adapter: string;
-  logs: string;
+  settings: string;
+  log: string;
 } {
   if (!localAppData) throw new Error("LOCALAPPDATA is unavailable");
   const root = path.join(localAppData, "DoubaoSkin");
@@ -12,6 +13,7 @@ export function resolveDataPaths(localAppData = process.env.LOCALAPPDATA): {
     root,
     themes: path.join(root, "themes"),
     adapter: path.join(root, "adapter", "doubao-adapter.json"),
-    logs: path.join(root, "logs")
+    settings: path.join(root, "settings.json"),
+    log: path.join(root, "app.log")
   };
 }

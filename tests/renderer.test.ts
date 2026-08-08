@@ -44,4 +44,15 @@ describe("single-window editor", () => {
     expect(fake.applyTheme).toHaveBeenCalledOnce();
     expect(fake.applyTheme).toHaveBeenCalledWith(DEFAULT_THEME.id);
   });
+
+  it("asks the main process for confirmed restart when Doubao requires it", async () => {
+    const fake = api();
+    vi.mocked(fake.startDoubao).mockResolvedValue({ kind: "restart-required" });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    root.querySelector<HTMLButtonElement>("[data-action='start']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fake.confirmRestart).toHaveBeenCalledOnce();
+  });
 });
