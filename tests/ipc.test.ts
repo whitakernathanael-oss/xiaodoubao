@@ -1,0 +1,48 @@
+import { describe, expect, it, vi } from "vitest";
+import { registerIpcHandlers, type IpcServices } from "../src/main/ipc-handlers";
+import { IPC_CHANNELS } from "../src/shared/ipc";
+
+function services(): IpcServices {
+  return {
+    listThemes: vi.fn(), loadTheme: vi.fn(), saveTheme: vi.fn(), deleteTheme: vi.fn(),
+    duplicateTheme: vi.fn(), importTheme: vi.fn(), exportTheme: vi.fn(), chooseWallpaper: vi.fn(),
+    getStatus: vi.fn(), startDoubao: vi.fn(), confirmRestart: vi.fn(), applyTheme: vi.fn(),
+    restoreOfficial: vi.fn(), readLog: vi.fn(), chooseDoubaoExecutable: vi.fn()
+  };
+}
+
+describe("bounded IPC", () => {
+  it("exposes only the documented channels", () => {
+    expect(Object.values(IPC_CHANNELS).sort()).toEqual([
+      "adapter:status", "doubao:choose-executable", "doubao:restart",
+      "doubao:start", "log:read", "skin:apply", "skin:restore",
+      "theme:delete", "theme:duplicate", "theme:export", "theme:import",
+      "theme:list", "theme:load", "theme:save", "wallpaper:choose"
+    ].sort());
+  });
+
+  it("registers and removes each exact handler", () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const ipcMain = {
+      handle: vi.fn((channel: string, handler: (...args: unknown[]) => unknown) => handlers.set(channel, handler)),
+      removeHandler: vi.fn((channel: string) => handlers.delete(channel))
+    };
+    const cleanup = registerIpcHandlers(services(), ipcMain);
+    expect([...handlers.keys()].sort()).toEqual(Object.values(IPC_CHANNELS).sort());
+    cleanup();
+    expect(handlers.size).toBe(0);
+  });
+
+  it("rejects an invalid theme id at the boundary", async () => {
+    const loadTheme = vi.fn();
+    const current = { ...services(), loadTheme };
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    registerIpcHandlers(current, {
+      handle: (channel, handler) => handlers.set(channel, handler),
+      removeHandler: () => undefined
+    });
+
+    await expect(handlers.get(IPC_CHANNELS.themeLoad)?.({}, "../escape")).rejects.toThrow(/theme id/i);
+    expect(loadTheme).not.toHaveBeenCalled();
+  });
+});
