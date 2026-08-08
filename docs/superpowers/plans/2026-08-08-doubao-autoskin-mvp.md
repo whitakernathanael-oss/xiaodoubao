@@ -98,7 +98,9 @@ tests/*.test.ts                     unit/integration coverage
 Run:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 docs\superpowers\specs\2026-08-08-doubao-autoskin-design.md
+$text = (Get-Content -Raw docs\superpowers\specs\2026-08-08-doubao-autoskin-design.md) -replace "`r`n", "`n"
+$sha = [System.Security.Cryptography.SHA256]::Create()
+[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($text))).Replace('-', '')
 ```
 
 Expected SHA-256: `45770FC1CD285D24502473554B783A8FCC08E4BCF203B3386076FBA313970815`.
