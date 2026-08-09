@@ -15,6 +15,7 @@ describe("Windows package metadata", () => {
     expect(packageJson.productName).toBe("豆包皮肤版");
     expect(packageJson.author).toBeTruthy();
     expect(packageJson.scripts.make).toContain("--arch=x64");
+    expect(packageJson.scripts["release:win"]).toBe("npm run typecheck && npm test && node tools/release-win.cjs");
     expect(packageJson.devDependencies.electron).toBe("43.3.0");
 
     const packager = config.packagerConfig as {

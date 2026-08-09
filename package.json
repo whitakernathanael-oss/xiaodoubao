@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "make": "electron-forge make --arch=x64"
+    "make": "electron-forge make --arch=x64",
+    "release:win": "npm run typecheck && npm test && node tools/release-win.cjs"
   },
   "dependencies": {
     "fflate": "^0.8.3",

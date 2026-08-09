@@ -1,0 +1,37 @@
+import { createRequire } from "node:module";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+
+const require = createRequire(import.meta.url);
+const { artifactPaths, removeOldOutput } = require("../tools/release-win.cjs") as {
+  artifactPaths(root: string): { setup: string; portable: string };
+  removeOldOutput(root: string): string;
+};
+
+const temporaryRoots: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
+describe("Windows release helper", () => {
+  it("deletes only the project out directory", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "doubao-release-"));
+    temporaryRoots.push(root);
+    await mkdir(path.join(root, "out", "stale"), { recursive: true });
+    await writeFile(path.join(root, "keep.txt"), "keep");
+
+    expect(removeOldOutput(root)).toBe(path.join(root, "out"));
+    await expect(stat(path.join(root, "out"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readFile(path.join(root, "keep.txt"), "utf8")).toBe("keep");
+  });
+
+  it("resolves the Setup and portable executable paths", () => {
+    expect(artifactPaths("C:\\project")).toEqual({
+      setup: path.resolve("C:\\project", "out/make/squirrel.windows/x64/豆包皮肤版-Setup.exe"),
+      portable: path.resolve("C:\\project", "out/doubao-autoskin-win32-x64/豆包皮肤版.exe")
+    });
+  });
+});
