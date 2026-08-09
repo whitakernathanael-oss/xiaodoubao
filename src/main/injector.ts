@@ -47,6 +47,7 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
 
   const clear = (): void => {
     previous?.observer?.disconnect?.();
+    clearTimeout(previous?.timer);
     if (previous?.blobUrl) URL.revokeObjectURL(previous.blobUrl);
     document.getElementById(STYLE_ID)?.remove();
     document.getElementById(WALLPAPER_ID)?.remove();
@@ -67,9 +68,17 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
   }
 
   previous?.observer?.disconnect?.();
+  clearTimeout(previous?.timer);
   const marked = new Set<Element>();
   const mark = (): void => {
-    for (const element of marked) element.classList.remove(...Object.values(classNames), "dbs-composer-surface");
+    for (const element of marked) {
+      element.classList.remove(
+        ...Object.values(classNames),
+        "dbs-composer-surface",
+        "dbs-content-layer",
+        "dbs-content-surface"
+      );
+    }
     marked.clear();
     const current = find();
     for (const [region, elements] of Object.entries(current)) {
@@ -84,6 +93,25 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
           element.parentElement.classList.add("dbs-composer-surface");
           marked.add(element.parentElement);
         }
+      }
+    }
+    const appRoot = current.appRoot[0];
+    if (appRoot) {
+      const contentRegions = [...current.sidebar, ...current.chatArea, ...current.settingsPanel];
+      for (const region of contentRegions) {
+        if (!appRoot.contains(region)) continue;
+        let ancestor = region.parentElement;
+        while (ancestor && ancestor !== appRoot) {
+          ancestor.classList.add("dbs-content-surface");
+          marked.add(ancestor);
+          ancestor = ancestor.parentElement;
+        }
+      }
+      for (const child of [...appRoot.children]) {
+        if (child.id === WALLPAPER_ID) continue;
+        if (!contentRegions.some((region) => child === region || child.contains(region))) continue;
+        child.classList.add("dbs-content-layer");
+        marked.add(child);
       }
     }
   };
@@ -195,7 +223,7 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
   }
   if (wallpaper.parentElement !== wallpaperHost) wallpaperHost.prepend(wallpaper);
   Object.assign(wallpaper.style, {
-    position: "absolute", inset: "0", pointerEvents: "none", zIndex: "-1",
+    position: "absolute", inset: "0", pointerEvents: "none", zIndex: "0",
     backgroundImage: `url(${JSON.stringify(blobUrl)})`,
     backgroundRepeat: "no-repeat", backgroundSize: `${theme.wallpaper.fit}`,
     backgroundPosition: `${theme.wallpaper.positionX}% ${theme.wallpaper.positionY}%`,
@@ -217,6 +245,8 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
 #doubao-autoskin-wallpaper::before { background: var(--dbs-contrast-base); opacity: var(--dbs-wallpaper-safety-opacity); }
 #doubao-autoskin-wallpaper::after { background: var(--dbs-wallpaper-overlay); opacity: var(--dbs-wallpaper-overlay-opacity); }
 html.doubao-skin .dbs-wallpaper-host { position: relative !important; isolation: isolate !important; background: var(--dbs-chat-bg) !important; }
+html.doubao-skin .dbs-content-surface { background: transparent !important; }
+html.doubao-skin .dbs-content-layer { position: relative !important; z-index: 0 !important; background: transparent !important; }
 html.doubao-skin .dbs-chat-area { position: relative !important; background: transparent !important; }
 html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-sidebar-glass-base) var(--dbs-sidebar-alpha), transparent) !important; -webkit-backdrop-filter: blur(16px) saturate(1.08) !important; backdrop-filter: blur(16px) saturate(1.08) !important; border-color: var(--dbs-sidebar-border) !important; border-radius: var(--dbs-sidebar-radius) !important; }
 html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"] { background: transparent !important; }
@@ -244,13 +274,21 @@ html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-b
 html.doubao-skin .dbs-settings-panel { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-settings-safety-mix), var(--dbs-settings-bg)) !important; }
 ${extraCss}`;
 
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  const state = {
+    observer: undefined as MutationObserver | undefined,
+    timer: undefined as ReturnType<typeof setTimeout> | undefined,
+    blobUrl,
+    wallpaperDataUrl,
+    marked,
+    themeClass: `theme-${theme.id}`
+  };
   const observer = new MutationObserver(() => {
-    clearTimeout(timer);
-    timer = setTimeout(mark, 80);
+    clearTimeout(state.timer);
+    state.timer = setTimeout(mark, 80);
   });
+  state.observer = observer;
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  global[STATE_KEY] = { observer, blobUrl, wallpaperDataUrl, marked, themeClass: `theme-${theme.id}` };
+  global[STATE_KEY] = state;
   return { status: missingOptional.length > 0 ? "partial" : "compatible", missingRequired, missingOptional };
 }
 
@@ -262,6 +300,7 @@ function cleanupRuntime(): boolean {
   const global = window as unknown as Record<string, any>;
   const state = global[STATE_KEY];
   state?.observer?.disconnect?.();
+  clearTimeout(state?.timer);
   if (state?.blobUrl) URL.revokeObjectURL(state.blobUrl);
   document.getElementById(STYLE_ID)?.remove();
   document.getElementById(WALLPAPER_ID)?.remove();

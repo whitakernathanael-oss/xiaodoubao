@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildApplyExpression, buildCleanupExpression, buildVerifyExpression } from "../src/main/injector";
 import type { DoubaoAdapter } from "../src/shared/contracts";
 import { DEFAULT_THEME } from "../src/shared/defaults";
@@ -70,6 +70,30 @@ describe("theme injection payloads", () => {
     }
   });
 
+  it("cancels a pending DOM rematch when the official appearance is restored", async () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '<div id="root"><main>聊天</main></div>';
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
+      document.querySelector("#root")!.append(document.createElement("span"));
+      await Promise.resolve();
+
+      await new Function(`return ${buildCleanupExpression()}`)();
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(document.querySelector("[class*='dbs-']")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
   it("keeps system text untouched while mounting wallpaper behind the app root and glass sidebar", async () => {
     document.body.innerHTML = `
       <div id="root"><aside>导航</aside><main><p class="user">用户消息</p><p class="assistant">助手消息</p><textarea></textarea><button>发送</button></main></div>
@@ -105,7 +129,9 @@ describe("theme injection payloads", () => {
   it("keeps fixed application-root children out of the wallpaper stacking rule", async () => {
     document.body.innerHTML = `
       <div id="root">
-        <aside>导航</aside><main>聊天</main>
+        <div id="chat-route-layout">
+          <div id="chat-route-main"><aside>导航</aside><main>聊天</main></div>
+        </div>
         <div id="fixed-layer" style="position: fixed">浮层</div>
       </div>
     `;
@@ -116,11 +142,20 @@ describe("theme injection payloads", () => {
     try {
       await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
       const wallpaper = document.querySelector<HTMLElement>("#doubao-autoskin-wallpaper")!;
+      const contentLayer = document.querySelector<HTMLElement>("#chat-route-layout")!;
+      const contentSurface = document.querySelector<HTMLElement>("#chat-route-main")!;
       const fixed = document.querySelector<HTMLElement>("#fixed-layer")!;
       const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
 
-      expect(wallpaper.style.zIndex).toBe("-1");
+      expect(wallpaper.style.zIndex).toBe("0");
+      expect(contentLayer.classList.contains("dbs-content-layer")).toBe(true);
+      expect(contentSurface.classList.contains("dbs-content-surface")).toBe(true);
+      expect(fixed.classList.contains("dbs-content-layer")).toBe(false);
       expect(getComputedStyle(fixed).position).toBe("fixed");
+      expect(css).toContain("html.doubao-skin .dbs-content-layer");
+      expect(css).toContain("html.doubao-skin .dbs-content-surface");
+      expect(css).toContain("z-index: 0 !important");
+      expect(css).toContain("background: transparent !important");
       expect(css).not.toContain('.dbs-wallpaper-host > :not(#doubao-autoskin-wallpaper)');
     } finally {
       URL.createObjectURL = originalCreateObjectUrl;
