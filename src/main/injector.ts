@@ -128,6 +128,25 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
   }
   const safetyChannels = mixChannels(hasLightText ? [0, 0, 0] : [255, 255, 255], accentChannels, baseWeight);
   const safetyBase = `#${safetyChannels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+  const sidebarAlpha = Math.max(0, Math.min(1, theme.regions.sidebar.opacity));
+  const wallpaperSafetyOpacity = hasLightText ? 0.64 : 0.68;
+  const foregroundChannels = channels.length === 3 ? channels : (hasLightText ? [255, 255, 255] : [0, 0, 0]);
+  const extremeWallpaper = hasLightText ? [255, 255, 255] : [0, 0, 0];
+  const underGlass = mixChannels(extremeWallpaper, safetyChannels, 1 - wallpaperSafetyOpacity);
+  const contrastFor = (surface: number[]): number => {
+    const foregroundValue = relativeLuminance(foregroundChannels);
+    const surfaceValue = relativeLuminance(surface);
+    return (Math.max(foregroundValue, surfaceValue) + 0.05) / (Math.min(foregroundValue, surfaceValue) + 0.05);
+  };
+  const sidebarChannels = channelsFor(theme.regions.sidebar.backgroundColor);
+  let sidebarSafetyWeight = 0.55;
+  let sidebarGlassChannels = mixChannels(safetyChannels, sidebarChannels, sidebarSafetyWeight);
+  while (contrastFor(mixChannels(underGlass, sidebarGlassChannels, 1 - sidebarAlpha)) < 4.5
+    && sidebarSafetyWeight < 0.98) {
+    sidebarSafetyWeight = Math.min(0.98, sidebarSafetyWeight + 0.05);
+    sidebarGlassChannels = mixChannels(safetyChannels, sidebarChannels, sidebarSafetyWeight);
+  }
+  const sidebarGlassBase = `#${sidebarGlassChannels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
   const safeMix = (opacity: number, minimum: number): string =>
     `${Math.round(Math.max(minimum, Math.min(88, 54 + (1 - opacity) * 28)))}%`;
 
@@ -136,7 +155,8 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     "--dbs-sidebar-selected": theme.regions.sidebar.selectedColor,
     "--dbs-sidebar-border": theme.regions.sidebar.borderColor,
     "--dbs-sidebar-radius": `${theme.regions.sidebar.borderRadius}px`,
-    "--dbs-sidebar-alpha": `${Math.round(Math.max(0, Math.min(1, theme.regions.sidebar.opacity)) * 100)}%`,
+    "--dbs-sidebar-alpha": `${Math.round(sidebarAlpha * 100)}%`,
+    "--dbs-sidebar-glass-base": sidebarGlassBase,
     "--dbs-chat-bg": theme.regions.chat.backgroundColor,
     "--dbs-user-bubble": theme.regions.chat.userBubbleColor,
     "--dbs-assistant-bubble": theme.regions.chat.assistantBubbleColor,
@@ -177,7 +197,7 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
   }
   if (wallpaper.parentElement !== wallpaperHost) wallpaperHost.prepend(wallpaper);
   Object.assign(wallpaper.style, {
-    position: "absolute", inset: "0", pointerEvents: "none", zIndex: "0",
+    position: "absolute", inset: "0", pointerEvents: "none", zIndex: "-1",
     backgroundImage: `url(${JSON.stringify(blobUrl)})`,
     backgroundRepeat: "no-repeat", backgroundSize: `${theme.wallpaper.fit}`,
     backgroundPosition: `${theme.wallpaper.positionX}% ${theme.wallpaper.positionY}%`,
@@ -199,9 +219,8 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
 #doubao-autoskin-wallpaper::before { background: var(--dbs-contrast-base); opacity: var(--dbs-wallpaper-safety-opacity); }
 #doubao-autoskin-wallpaper::after { background: var(--dbs-wallpaper-overlay); opacity: var(--dbs-wallpaper-overlay-opacity); }
 html.doubao-skin .dbs-wallpaper-host { position: relative !important; isolation: isolate !important; background: var(--dbs-chat-bg) !important; }
-html.doubao-skin .dbs-wallpaper-host > :not(#doubao-autoskin-wallpaper) { position: relative !important; z-index: 1 !important; }
 html.doubao-skin .dbs-chat-area { position: relative !important; background: transparent !important; }
-html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-sidebar-bg) var(--dbs-sidebar-alpha), transparent) !important; -webkit-backdrop-filter: blur(16px) saturate(1.08) !important; backdrop-filter: blur(16px) saturate(1.08) !important; border-color: var(--dbs-sidebar-border) !important; border-radius: var(--dbs-sidebar-radius) !important; }
+html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-sidebar-glass-base) var(--dbs-sidebar-alpha), transparent) !important; -webkit-backdrop-filter: blur(16px) saturate(1.08) !important; backdrop-filter: blur(16px) saturate(1.08) !important; border-color: var(--dbs-sidebar-border) !important; border-radius: var(--dbs-sidebar-radius) !important; }
 html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"] { background: transparent !important; }
 html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"]:is(:hover, :focus-within) { background: color-mix(in srgb, var(--dbs-sidebar-selected) 34%, transparent) !important; }
 html.doubao-skin .dbs-sidebar :is([aria-selected="true"], [aria-current]:not([aria-current="false"]), [data-state="active"], [data-active="true"], [class~="!bg-dbx-bg-float"]) { background: color-mix(in srgb, var(--dbs-sidebar-selected) 44%, transparent) !important; }

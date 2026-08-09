@@ -4,6 +4,27 @@ import { buildApplyExpression, buildCleanupExpression, buildVerifyExpression } f
 import type { DoubaoAdapter } from "../src/shared/contracts";
 import { DEFAULT_THEME } from "../src/shared/defaults";
 
+type Rgb = readonly [number, number, number];
+
+function hexRgb(hex: string): Rgb {
+  return [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)) as unknown as Rgb;
+}
+
+function blend(background: Rgb, foreground: Rgb, opacity: number): Rgb {
+  return background.map((channel, index) => channel * (1 - opacity) + foreground[index] * opacity) as unknown as Rgb;
+}
+
+function contrastRatio(first: Rgb, second: Rgb): number {
+  const channel = (value: number) => {
+    const normalized = value / 255;
+    return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = (rgb: Rgb) => channel(rgb[0]) * 0.2126 + channel(rgb[1]) * 0.7152 + channel(rgb[2]) * 0.0722;
+  const bright = Math.max(luminance(first), luminance(second));
+  const dark = Math.min(luminance(first), luminance(second));
+  return (bright + 0.05) / (dark + 0.05);
+}
+
 const adapter: DoubaoAdapter = {
   adapterVersion: 1,
   targets: [{ kind: "main", urlPrefix: "doubao://doubao-chat/chat" }],
@@ -71,9 +92,64 @@ describe("theme injection payloads", () => {
       expect(document.documentElement.style.getPropertyValue("--dbs-sidebar-alpha")).toBe("72%");
       expect(css).toContain("--dbs-contrast-base");
       expect(css).toContain("backdrop-filter: blur(");
-      expect(css).toContain("var(--dbs-sidebar-bg) var(--dbs-sidebar-alpha), transparent");
+      expect(css).toContain("var(--dbs-sidebar-glass-base) var(--dbs-sidebar-alpha), transparent");
       expect(css).toContain('[data-testid="sidebar-section-item"] { background: transparent !important;');
       expect(css).not.toMatch(/(?:^|[;{\n])\s*(?:color|fill|caret-color)\s*:/i);
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
+  it("keeps fixed application-root children out of the wallpaper stacking rule", async () => {
+    document.body.innerHTML = `
+      <div id="root">
+        <aside>导航</aside><main>聊天</main>
+        <div id="fixed-layer" style="position: fixed">浮层</div>
+      </div>
+    `;
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
+      const wallpaper = document.querySelector<HTMLElement>("#doubao-autoskin-wallpaper")!;
+      const fixed = document.querySelector<HTMLElement>("#fixed-layer")!;
+      const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
+
+      expect(wallpaper.style.zIndex).toBe("-1");
+      expect(getComputedStyle(fixed).position).toBe("fixed");
+      expect(css).not.toContain('.dbs-wallpaper-host > :not(#doubao-autoskin-wallpaper)');
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
+  it.each([
+    { foreground: [255, 255, 255] as Rgb, wallpaper: [255, 255, 255] as Rgb, sidebar: "#eeeeee", safety: 0.64 },
+    { foreground: [0, 0, 0] as Rgb, wallpaper: [0, 0, 0] as Rgb, sidebar: "#161a22", safety: 0.68 }
+  ])("keeps system foreground readable through cross-mode sidebar glass", async ({ foreground, wallpaper, sidebar, safety }) => {
+    document.body.innerHTML = `<div id="root"><aside>导航</aside><main style="color: rgb(${foreground.join(",")})">聊天</main></div>`;
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      const theme = structuredClone(DEFAULT_THEME);
+      theme.regions.sidebar.backgroundColor = sidebar;
+      theme.regions.sidebar.opacity = 0.72;
+      await new Function(`return ${buildApplyExpression(theme, adapter, "data:image/png;base64,AA==", "")}`)();
+
+      const safetyBase = hexRgb(document.documentElement.style.getPropertyValue("--dbs-contrast-base"));
+      const glassBase = hexRgb(document.documentElement.style.getPropertyValue("--dbs-sidebar-glass-base"));
+      const underGlass = blend(wallpaper, safetyBase, safety);
+      const finalSurface = blend(underGlass, glassBase, 0.72);
+
+      expect(contrastRatio(foreground, finalSurface)).toBeGreaterThanOrEqual(4.5);
     } finally {
       URL.createObjectURL = originalCreateObjectUrl;
       URL.revokeObjectURL = originalRevokeObjectUrl;

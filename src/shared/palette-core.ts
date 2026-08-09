@@ -201,7 +201,6 @@ function buildFamilies(
     const hsl = toHsl(bucketRgb(bucket));
     const matching = rawFamilies.find((family) =>
       hueDistance(family.hsl.hue, hsl.hue) <= 35
-      && Math.abs(family.hsl.lightness - hsl.lightness) <= 0.35
     );
     if (matching) {
       matching.count += bucket.count;

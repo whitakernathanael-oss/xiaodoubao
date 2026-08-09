@@ -120,6 +120,18 @@ describe("local palette derivation", () => {
     expect(palette.competitionDetected).toBe(false);
   });
 
+  it("aggregates separated blue tones before competing with a yellow family", () => {
+    const palette = derivePaletteFromRgba(sample(10, 10, [
+      { color: [20, 55, 125], columns: 3 },
+      { color: [115, 180, 240], columns: 3 },
+      { color: [242, 205, 70], columns: 4 }
+    ]), 10);
+
+    expect(hueDistance(hue(palette.seedColor), 215)).toBeLessThan(25);
+    expect(palette.seedColor).not.toBe("#14377d");
+    expect(palette.seedColor).not.toBe("#73b4f0");
+  });
+
   it("does not mark red and orange as conflicting families", () => {
     const palette = derivePaletteFromRgba(sample(20, 10, [
       { color: [205, 50, 50], columns: 11 },
