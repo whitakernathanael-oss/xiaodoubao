@@ -201,15 +201,19 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
 html.doubao-skin :is(.dbs-chat-area, .dbs-wallpaper-host) { position: relative !important; isolation: isolate !important; background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-chat-bg)) !important; }
 html.doubao-skin :is(.dbs-chat-area, .dbs-wallpaper-host) > :not(#doubao-autoskin-wallpaper) { position: relative !important; z-index: 1 !important; }
 html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-sidebar-safety-mix), var(--dbs-sidebar-bg)) !important; border-color: var(--dbs-sidebar-border) !important; border-radius: var(--dbs-sidebar-radius) !important; }
-html.doubao-skin .dbs-sidebar :is([aria-selected="true"], [aria-current]:not([aria-current="false"]), [data-state="active"], [data-active="true"]) { background: color-mix(in srgb, var(--dbs-contrast-base) 60%, var(--dbs-sidebar-selected)) !important; }
+html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"] { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-sidebar-safety-mix), var(--dbs-sidebar-bg)) !important; }
+html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"]:is(:hover, :focus-within) { background: color-mix(in srgb, var(--dbs-contrast-base) 68%, var(--dbs-sidebar-selected)) !important; }
+html.doubao-skin .dbs-sidebar :is([aria-selected="true"], [aria-current]:not([aria-current="false"]), [data-state="active"], [data-active="true"], [class~="!bg-dbx-bg-float"]) { background: color-mix(in srgb, var(--dbs-contrast-base) 60%, var(--dbs-sidebar-selected)) !important; }
 html.doubao-skin .dbs-message-user { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-user-bubble)) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
 html.doubao-skin .dbs-message-assistant { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-assistant-bubble)) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
 html.doubao-skin :is(.dbs-composer, .dbs-composer-surface) { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-composer-safety-mix), var(--dbs-composer-bg)) !important; border: 1px solid var(--dbs-composer-border) !important; border-radius: var(--dbs-composer-radius) !important; }
 html.doubao-skin .dbs-composer-surface .dbs-composer { background: transparent !important; border: 0 !important; border-radius: inherit !important; }
+html.doubao-skin .dbs-composer > :has(textarea, [contenteditable="true"]) { background: transparent !important; }
 html.doubao-skin :is(.dbs-composer, .dbs-composer-surface) :is(textarea, [contenteditable="true"]) { background: transparent !important; }
 html.doubao-skin :is(.dbs-composer, .dbs-composer-surface):focus-within { border-color: var(--dbs-composer-focus) !important; }
 html.doubao-skin .dbs-button { --primary-color: var(--dbs-button-primary); border-radius: var(--dbs-button-radius) !important; }
 html.doubao-skin :is(.dbs-composer, .dbs-composer-surface) .dbs-button { background-color: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-button-safety-mix), var(--dbs-button-bg)) !important; border-color: var(--dbs-button-border) !important; box-shadow: 0 6px 20px rgb(0 0 0 / calc(var(--dbs-button-shadow) * .3)) !important; }
+html.doubao-skin .dbs-chat-area [class*="greeting-text-"]::after { background: transparent !important; }
 html.doubao-skin .dbs-settings-panel { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-settings-safety-mix), var(--dbs-settings-bg)) !important; }
 ${extraCss}`;
 

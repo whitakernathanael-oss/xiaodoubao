@@ -157,6 +157,44 @@ describe("theme injection payloads", () => {
     }
   });
 
+  it("overrides the current Doubao dark navigation, composer, and greeting surfaces", async () => {
+    const runtimeAdapter: DoubaoAdapter = {
+      ...adapter,
+      regions: { ...adapter.regions, composer: ["#input-engine-container"] }
+    };
+    document.body.innerHTML = `
+      <div id="root">
+        <aside>
+          <div data-testid="create_conversation_button"><div class="!bg-dbx-bg-float">新对话</div></div>
+          <div data-testid="sidebar-section-item">历史对话</div>
+        </aside>
+        <main>
+          <div id="flow-chat-guidance-page"><div class="greeting-text-Q0pGud">问候</div></div>
+          <section><div id="input-engine-container"><div class="native-composer-surface"><textarea></textarea></div><div class="attachment-surface">附件</div></div></section>
+        </main>
+      </div>
+    `;
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      await new Function(`return ${buildApplyExpression(DEFAULT_THEME, runtimeAdapter, "data:image/png;base64,AA==", "")}`)();
+      const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
+
+      expect(css).toContain('[class~="!bg-dbx-bg-float"]');
+      expect(css).toContain('[data-testid="sidebar-section-item"]');
+      expect(css).toContain('[data-testid="sidebar-section-item"]:is(:hover, :focus-within)');
+      expect(css).toContain('.dbs-composer > :has(textarea, [contenteditable="true"]) { background: transparent !important;');
+      expect(css).not.toContain('.dbs-composer > * { background: transparent !important;');
+      expect(css).toContain('[class*="greeting-text-"]::after');
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
   it("uses the adapted application root when a settings dialog has no chat area", async () => {
     document.body.innerHTML = '<div id="root"><div class="settings">设置</div></div>';
     const originalCreateObjectUrl = URL.createObjectURL;
