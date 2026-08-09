@@ -130,9 +130,9 @@ describe("theme injection payloads", () => {
   });
 
   it.each([
-    { foreground: [255, 255, 255] as Rgb, wallpaper: [255, 255, 255] as Rgb, sidebar: "#eeeeee", safety: 0.64 },
-    { foreground: [0, 0, 0] as Rgb, wallpaper: [0, 0, 0] as Rgb, sidebar: "#161a22", safety: 0.68 }
-  ])("keeps system foreground readable through cross-mode sidebar glass", async ({ foreground, wallpaper, sidebar, safety }) => {
+    { foreground: [255, 255, 255] as Rgb, worstBackground: [255, 255, 255] as Rgb, sidebar: "#eeeeee" },
+    { foreground: [0, 0, 0] as Rgb, worstBackground: [0, 0, 0] as Rgb, sidebar: "#161a22" }
+  ])("keeps system foreground readable through cross-mode sidebar glass", async ({ foreground, worstBackground, sidebar }) => {
     document.body.innerHTML = `<div id="root"><aside>导航</aside><main style="color: rgb(${foreground.join(",")})">聊天</main></div>`;
     const originalCreateObjectUrl = URL.createObjectURL;
     const originalRevokeObjectUrl = URL.revokeObjectURL;
@@ -144,10 +144,8 @@ describe("theme injection payloads", () => {
       theme.regions.sidebar.opacity = 0.72;
       await new Function(`return ${buildApplyExpression(theme, adapter, "data:image/png;base64,AA==", "")}`)();
 
-      const safetyBase = hexRgb(document.documentElement.style.getPropertyValue("--dbs-contrast-base"));
       const glassBase = hexRgb(document.documentElement.style.getPropertyValue("--dbs-sidebar-glass-base"));
-      const underGlass = blend(wallpaper, safetyBase, safety);
-      const finalSurface = blend(underGlass, glassBase, 0.72);
+      const finalSurface = blend(worstBackground, glassBase, 0.72);
 
       expect(contrastRatio(foreground, finalSurface)).toBeGreaterThanOrEqual(4.5);
     } finally {

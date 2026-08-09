@@ -129,10 +129,8 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
   const safetyChannels = mixChannels(hasLightText ? [0, 0, 0] : [255, 255, 255], accentChannels, baseWeight);
   const safetyBase = `#${safetyChannels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
   const sidebarAlpha = Math.max(0, Math.min(1, theme.regions.sidebar.opacity));
-  const wallpaperSafetyOpacity = hasLightText ? 0.64 : 0.68;
   const foregroundChannels = channels.length === 3 ? channels : (hasLightText ? [255, 255, 255] : [0, 0, 0]);
-  const extremeWallpaper = hasLightText ? [255, 255, 255] : [0, 0, 0];
-  const underGlass = mixChannels(extremeWallpaper, safetyChannels, 1 - wallpaperSafetyOpacity);
+  const underGlass = hasLightText ? [255, 255, 255] : [0, 0, 0];
   const contrastFor = (surface: number[]): number => {
     const foregroundValue = relativeLuminance(foregroundChannels);
     const surfaceValue = relativeLuminance(surface);
