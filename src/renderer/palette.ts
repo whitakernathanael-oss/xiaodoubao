@@ -24,7 +24,10 @@ export async function extractPalette(bytes: ArrayBuffer, mime: string): Promise<
       if (!context) throw new Error("Canvas 2D is unavailable");
       context.clearRect(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
       context.drawImage(bitmap, fitted.x, fitted.y, fitted.width, fitted.height);
-      return derivePaletteFromRgba(context.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data);
+      return derivePaletteFromRgba(
+        context.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data,
+        SAMPLE_SIZE
+      );
     }
 
     const canvas = document.createElement("canvas");
@@ -34,7 +37,10 @@ export async function extractPalette(bytes: ArrayBuffer, mime: string): Promise<
     if (!context) throw new Error("Canvas 2D is unavailable");
     context.clearRect(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
     context.drawImage(bitmap, fitted.x, fitted.y, fitted.width, fitted.height);
-    return derivePaletteFromRgba(context.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data);
+    return derivePaletteFromRgba(
+      context.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data,
+      SAMPLE_SIZE
+    );
   } finally {
     bitmap.close();
   }

@@ -13,30 +13,40 @@ export function applyDerivedPalette(theme: Theme, palette: DerivedPalette): Them
     regions: {
       sidebar: {
         ...theme.regions.sidebar,
-        backgroundColor: palette.surface,
-        selectedColor: palette.accent,
-        borderColor: palette.accent
+        backgroundColor: palette.surfaceVariant,
+        opacity: 0.72,
+        textColor: palette.text,
+        selectedColor: palette.secondary,
+        borderColor: palette.border
       },
       chat: {
         ...theme.regions.chat,
-        backgroundColor: palette.surface,
-        borderColor: palette.accent
+        backgroundColor: palette.background,
+        opacity: Math.max(theme.regions.chat.opacity, 0.72),
+        userBubbleColor: palette.secondary,
+        assistantBubbleColor: palette.surfaceVariant,
+        textColor: palette.text,
+        borderColor: palette.border
       },
       composer: {
         ...theme.regions.composer,
         backgroundColor: palette.surface,
-        borderColor: palette.accent,
-        focusColor: palette.accent
+        opacity: Math.max(theme.regions.composer.opacity, 0.94),
+        textColor: palette.text,
+        borderColor: palette.border,
+        focusColor: palette.primary
       },
       buttons: {
         ...theme.regions.buttons,
-        primaryColor: palette.accent,
-        backgroundColor: palette.surface,
-        borderColor: palette.accent
+        primaryColor: palette.primary,
+        backgroundColor: palette.surfaceVariant,
+        textColor: palette.text,
+        borderColor: palette.border
       },
       settings: {
         ...theme.regions.settings,
-        panelColor: palette.surface
+        panelColor: palette.surface,
+        opacity: Math.max(theme.regions.settings.opacity, 0.94)
       }
     }
   };

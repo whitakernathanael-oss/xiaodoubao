@@ -33,12 +33,23 @@ describe("single-window editor", () => {
   beforeEach(() => {
     document.body.innerHTML = '<main id="app"></main>';
     vi.mocked(extractPalette).mockResolvedValue({
-      ink: "#101820",
-      mutedInk: "#53606a",
-      accent: "#2c8cff",
-      surface: "#e8f2ff",
+      seedColor: "#2873c8",
+      primary: "#276fbe",
+      primaryHover: "#205a9a",
+      secondary: "#6786a5",
+      surface: "#eef3f8",
+      surfaceVariant: "#d7e2ec",
+      background: "#f7fafc",
+      border: "#94abc0",
+      text: "#161920",
+      muted: "#575f68",
+      ink: "#161920",
+      mutedInk: "#575f68",
+      accent: "#276fbe",
       route: "light",
-      textContrast: 12.4
+      textContrast: 12.4,
+      neutralFallback: false,
+      competitionDetected: false
     });
     URL.createObjectURL = vi.fn(() => "blob:wallpaper");
     URL.revokeObjectURL = vi.fn();
@@ -100,7 +111,7 @@ describe("single-window editor", () => {
     expect(root.querySelector("[data-role='region-controls']")!.textContent).toContain("选择静态壁纸");
   });
 
-  it("saves image-derived accents without changing Doubao text colours", async () => {
+  it("saves image-derived tonal roles from one seed", async () => {
     const fake = api();
     vi.mocked(fake.chooseWallpaper).mockResolvedValue({
       name: "photo.png",
@@ -116,11 +127,11 @@ describe("single-window editor", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const saved = vi.mocked(fake.saveTheme).mock.calls.at(-1)?.[0].theme;
-    expect(saved?.palette.accent).toBe("#2c8cff");
-    expect(saved?.regions.sidebar.selectedColor).toBe("#2c8cff");
-    expect(saved?.regions.buttons.primaryColor).toBe("#2c8cff");
-    expect(saved?.regions.chat.backgroundColor).toBe("#e8f2ff");
-    expect(saved?.regions.sidebar.textColor).toBe(DEFAULT_THEME.regions.sidebar.textColor);
-    expect(saved?.regions.chat.textColor).toBe(DEFAULT_THEME.regions.chat.textColor);
+    expect(saved?.palette.accent).toBe("#276fbe");
+    expect(saved?.regions.sidebar.selectedColor).toBe("#6786a5");
+    expect(saved?.regions.buttons.primaryColor).toBe("#276fbe");
+    expect(saved?.regions.chat.backgroundColor).toBe("#f7fafc");
+    expect(saved?.regions.sidebar.textColor).toBe("#161920");
+    expect(saved?.regions.chat.textColor).toBe("#161920");
   });
 });
