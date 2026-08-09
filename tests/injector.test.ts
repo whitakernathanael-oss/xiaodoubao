@@ -195,6 +195,65 @@ describe("theme injection payloads", () => {
     }
   });
 
+  it("overrides populated conversation code surfaces and the dark composer fade", async () => {
+    document.body.innerHTML = `
+      <div id="root">
+        <aside></aside>
+        <main>
+          <div data-testid="message-list"></div>
+          <div id="conversation-fade" class="h-full from-s-color-bg-body to-transparent"></div>
+          <div id="conversation-code-container" class="custom-code-block-container">
+            <div id="conversation-code-area" class="code-area">
+              <div id="conversation-code-header" data-copy-ignore="true"><div class="header-live"><button id="copy-button">复制</button></div></div>
+              <div id="conversation-code-content" class="code-content"></div>
+            </div>
+          </div>
+          <div id="unrelated-code-area" class="code-area"><div class="code-content"></div></div>
+        </main>
+      </div>
+      <section id="new-chat" class="dbs-chat-area">
+        <div id="new-chat-fade" class="from-s-color-bg-body to-transparent"></div>
+        <div class="custom-code-block-container"><div class="code-area"><div class="code-content"></div></div></div>
+      </section>
+    `;
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
+      const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
+
+      const conversationFadeSelector = '.dbs-chat-area:has([data-testid="message-list"]) [class~="from-s-color-bg-body"][class~="to-transparent"]';
+      const codeContainerSelector = '.dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container';
+      const codeAreaSelector = `${codeContainerSelector} .code-area`;
+      const conversationCodeSelector = '.dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container .code-area .code-content';
+      const headerWrapperSelector = `${codeAreaSelector} > [data-copy-ignore="true"]`;
+      const headerSurfaceSelector = '.dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container .code-area > [data-copy-ignore="true"] > [class^="header-"]';
+
+      expect(css).toContain(`${conversationFadeSelector} { background-image: none !important;`);
+      expect(css).toContain(`${codeContainerSelector} { border-color:`);
+      expect(css).toContain(`${codeAreaSelector},`);
+      expect(css).toContain(conversationCodeSelector);
+      expect(css).toContain(`${headerWrapperSelector},`);
+      expect(css).toContain(headerSurfaceSelector);
+      expect([...document.querySelectorAll(conversationFadeSelector)].map((element) => element.id)).toEqual(["conversation-fade"]);
+      expect([...document.querySelectorAll(codeContainerSelector)].map((element) => element.id)).toEqual(["conversation-code-container"]);
+      expect([...document.querySelectorAll(codeAreaSelector)].map((element) => element.id)).toEqual(["conversation-code-area"]);
+      expect([...document.querySelectorAll(conversationCodeSelector)].map((element) => element.id)).toEqual(["conversation-code-content"]);
+      expect([...document.querySelectorAll(headerWrapperSelector)].map((element) => element.id)).toEqual(["conversation-code-header"]);
+      expect([...document.querySelectorAll(headerSurfaceSelector)].map((element) => element.className)).toEqual(["header-live"]);
+      expect(document.querySelector("#new-chat-fade")!.matches(conversationFadeSelector)).toBe(false);
+      expect(document.querySelector("#unrelated-code-area .code-content")!.matches(conversationCodeSelector)).toBe(false);
+      expect(document.querySelector("#copy-button")!.matches(headerSurfaceSelector)).toBe(false);
+      expect(css).not.toContain('[data-copy-ignore="true"] > *');
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
   it("uses the adapted application root when a settings dialog has no chat area", async () => {
     document.body.innerHTML = '<div id="root"><div class="settings">设置</div></div>';
     const originalCreateObjectUrl = URL.createObjectURL;

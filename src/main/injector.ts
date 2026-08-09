@@ -214,6 +214,12 @@ html.doubao-skin :is(.dbs-composer, .dbs-composer-surface):focus-within { border
 html.doubao-skin .dbs-button { --primary-color: var(--dbs-button-primary); border-radius: var(--dbs-button-radius) !important; }
 html.doubao-skin :is(.dbs-composer, .dbs-composer-surface) .dbs-button { background-color: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-button-safety-mix), var(--dbs-button-bg)) !important; border-color: var(--dbs-button-border) !important; box-shadow: 0 6px 20px rgb(0 0 0 / calc(var(--dbs-button-shadow) * .3)) !important; }
 html.doubao-skin .dbs-chat-area [class*="greeting-text-"]::after { background: transparent !important; }
+html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) [class~="from-s-color-bg-body"][class~="to-transparent"] { background-image: none !important; }
+html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container { border-color: var(--dbs-chat-border) !important; }
+html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container .code-area,
+html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container .code-area .code-content,
+html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container .code-area > [data-copy-ignore="true"],
+html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container .code-area > [data-copy-ignore="true"] > [class^="header-"] { background-color: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-composer-safety-mix), var(--dbs-composer-bg)) !important; border-color: var(--dbs-chat-border) !important; }
 html.doubao-skin .dbs-settings-panel { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-settings-safety-mix), var(--dbs-settings-bg)) !important; }
 ${extraCss}`;
 
