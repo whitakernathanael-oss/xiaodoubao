@@ -136,6 +136,7 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     "--dbs-sidebar-selected": theme.regions.sidebar.selectedColor,
     "--dbs-sidebar-border": theme.regions.sidebar.borderColor,
     "--dbs-sidebar-radius": `${theme.regions.sidebar.borderRadius}px`,
+    "--dbs-sidebar-alpha": `${Math.round(Math.max(0, Math.min(1, theme.regions.sidebar.opacity)) * 100)}%`,
     "--dbs-chat-bg": theme.regions.chat.backgroundColor,
     "--dbs-user-bubble": theme.regions.chat.userBubbleColor,
     "--dbs-assistant-bubble": theme.regions.chat.assistantBubbleColor,
@@ -154,7 +155,6 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     "--dbs-settings-bg": theme.regions.settings.panelColor,
     "--dbs-contrast-base": safetyBase,
     "--dbs-wallpaper-safety-opacity": hasLightText ? "0.64" : "0.68",
-    "--dbs-sidebar-safety-mix": safeMix(theme.regions.sidebar.opacity, 60),
     "--dbs-chat-safety-mix": safeMix(theme.regions.chat.opacity, 62),
     "--dbs-composer-safety-mix": safeMix(theme.regions.composer.opacity, 64),
     "--dbs-button-safety-mix": safeMix(1, 60),
@@ -167,7 +167,7 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     if (previous?.blobUrl) URL.revokeObjectURL(previous.blobUrl);
     blobUrl = URL.createObjectURL(await (await fetch(wallpaperDataUrl)).blob());
   }
-  const wallpaperHost = (initial.chatArea[0] ?? initial.appRoot[0]) as HTMLElement;
+  const wallpaperHost = (initial.appRoot[0] ?? initial.chatArea[0]) as HTMLElement;
   wallpaperHost.classList.add("dbs-wallpaper-host");
   let wallpaper = document.getElementById(WALLPAPER_ID) as HTMLDivElement | null;
   if (!wallpaper) {
@@ -198,12 +198,13 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
 #doubao-autoskin-wallpaper::before, #doubao-autoskin-wallpaper::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
 #doubao-autoskin-wallpaper::before { background: var(--dbs-contrast-base); opacity: var(--dbs-wallpaper-safety-opacity); }
 #doubao-autoskin-wallpaper::after { background: var(--dbs-wallpaper-overlay); opacity: var(--dbs-wallpaper-overlay-opacity); }
-html.doubao-skin :is(.dbs-chat-area, .dbs-wallpaper-host) { position: relative !important; isolation: isolate !important; background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-chat-bg)) !important; }
-html.doubao-skin :is(.dbs-chat-area, .dbs-wallpaper-host) > :not(#doubao-autoskin-wallpaper) { position: relative !important; z-index: 1 !important; }
-html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-sidebar-safety-mix), var(--dbs-sidebar-bg)) !important; border-color: var(--dbs-sidebar-border) !important; border-radius: var(--dbs-sidebar-radius) !important; }
-html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"] { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-sidebar-safety-mix), var(--dbs-sidebar-bg)) !important; }
-html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"]:is(:hover, :focus-within) { background: color-mix(in srgb, var(--dbs-contrast-base) 68%, var(--dbs-sidebar-selected)) !important; }
-html.doubao-skin .dbs-sidebar :is([aria-selected="true"], [aria-current]:not([aria-current="false"]), [data-state="active"], [data-active="true"], [class~="!bg-dbx-bg-float"]) { background: color-mix(in srgb, var(--dbs-contrast-base) 60%, var(--dbs-sidebar-selected)) !important; }
+html.doubao-skin .dbs-wallpaper-host { position: relative !important; isolation: isolate !important; background: var(--dbs-chat-bg) !important; }
+html.doubao-skin .dbs-wallpaper-host > :not(#doubao-autoskin-wallpaper) { position: relative !important; z-index: 1 !important; }
+html.doubao-skin .dbs-chat-area { position: relative !important; background: transparent !important; }
+html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-sidebar-bg) var(--dbs-sidebar-alpha), transparent) !important; -webkit-backdrop-filter: blur(16px) saturate(1.08) !important; backdrop-filter: blur(16px) saturate(1.08) !important; border-color: var(--dbs-sidebar-border) !important; border-radius: var(--dbs-sidebar-radius) !important; }
+html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"] { background: transparent !important; }
+html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"]:is(:hover, :focus-within) { background: color-mix(in srgb, var(--dbs-sidebar-selected) 34%, transparent) !important; }
+html.doubao-skin .dbs-sidebar :is([aria-selected="true"], [aria-current]:not([aria-current="false"]), [data-state="active"], [data-active="true"], [class~="!bg-dbx-bg-float"]) { background: color-mix(in srgb, var(--dbs-sidebar-selected) 44%, transparent) !important; }
 html.doubao-skin .dbs-message-user { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-user-bubble)) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
 html.doubao-skin .dbs-message-assistant { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-assistant-bubble)) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
 html.doubao-skin :is(.dbs-composer, .dbs-composer-surface) { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-composer-safety-mix), var(--dbs-composer-bg)) !important; border: 1px solid var(--dbs-composer-border) !important; border-radius: var(--dbs-composer-radius) !important; }

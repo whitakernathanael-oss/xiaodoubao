@@ -49,7 +49,7 @@ describe("theme injection payloads", () => {
     }
   });
 
-  it("keeps system text untouched while mounting wallpaper inside the chat area", async () => {
+  it("keeps system text untouched while mounting wallpaper behind the app root and glass sidebar", async () => {
     document.body.innerHTML = `
       <div id="root"><aside>导航</aside><main><p class="user">用户消息</p><p class="assistant">助手消息</p><textarea></textarea><button>发送</button></main></div>
     `;
@@ -58,15 +58,21 @@ describe("theme injection payloads", () => {
     URL.createObjectURL = () => "blob:wallpaper";
     URL.revokeObjectURL = () => undefined;
     try {
-      const payload = buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "");
+      const theme = structuredClone(DEFAULT_THEME);
+      theme.regions.sidebar.opacity = 0.72;
+      const payload = buildApplyExpression(theme, adapter, "data:image/png;base64,AA==", "");
       const result = await new Function(`return ${payload}`)() as { status: string };
-      const main = document.querySelector("main")!;
+      const root = document.querySelector("#root")!;
       const wallpaper = document.querySelector("#doubao-autoskin-wallpaper")!;
       const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
 
       expect(result.status).toBe("partial");
-      expect(wallpaper.parentElement).toBe(main);
+      expect(wallpaper.parentElement).toBe(root);
+      expect(document.documentElement.style.getPropertyValue("--dbs-sidebar-alpha")).toBe("72%");
       expect(css).toContain("--dbs-contrast-base");
+      expect(css).toContain("backdrop-filter: blur(");
+      expect(css).toContain("var(--dbs-sidebar-bg) var(--dbs-sidebar-alpha), transparent");
+      expect(css).toContain('[data-testid="sidebar-section-item"] { background: transparent !important;');
       expect(css).not.toMatch(/(?:^|[;{\n])\s*(?:color|fill|caret-color)\s*:/i);
     } finally {
       URL.createObjectURL = originalCreateObjectUrl;
