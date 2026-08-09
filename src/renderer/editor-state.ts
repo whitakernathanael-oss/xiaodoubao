@@ -1,20 +1,16 @@
-import type { Theme, ThemeRegions } from "../shared/contracts";
-import { DEFAULT_THEME } from "../shared/defaults";
+import type { Theme } from "../shared/contracts";
 
 export interface EditorState {
   theme: Theme;
-  undoStack: Theme[];
   dirty: boolean;
 }
-
-export type EditableRegion = keyof ThemeRegions | "wallpaper";
 
 function clone(theme: Theme): Theme {
   return structuredClone(theme);
 }
 
 export function createEditorState(theme: Theme): EditorState {
-  return { theme: clone(theme), undoStack: [], dirty: false };
+  return { theme: clone(theme), dirty: false };
 }
 
 export function updateField(state: EditorState, path: readonly string[], value: unknown): EditorState {
@@ -31,28 +27,5 @@ export function updateField(state: EditorState, path: readonly string[], value: 
   const leaf = path.at(-1)!;
   if (!(leaf in cursor)) throw new Error("Editor field path is invalid");
   cursor[leaf] = value;
-  return {
-    theme,
-    undoStack: [...state.undoStack, state.theme].slice(-30),
-    dirty: true
-  };
-}
-
-export function undo(state: EditorState): EditorState {
-  const previous = state.undoStack.at(-1);
-  if (!previous) return state;
-  return {
-    theme: clone(previous),
-    undoStack: state.undoStack.slice(0, -1),
-    dirty: true
-  };
-}
-
-export function resetRegion(state: EditorState, region: EditableRegion): EditorState {
-  if (region === "wallpaper") {
-    const file = state.theme.wallpaper.file;
-    const next = updateField(state, ["wallpaper"], { ...DEFAULT_THEME.wallpaper, file });
-    return next;
-  }
-  return updateField(state, ["regions", region], structuredClone(DEFAULT_THEME.regions[region]));
+  return { theme, dirty: true };
 }

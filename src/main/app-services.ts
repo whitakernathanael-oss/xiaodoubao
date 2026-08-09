@@ -207,7 +207,6 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     },
     applyTheme: (id) => workflow.apply(id, settings.port),
     restoreOfficial: () => workflow.restore(settings.port),
-    readLog: () => log.read(),
     chooseDoubaoExecutable: chooseExecutable
   };
   return { services, workflow, dispose: () => workflow.dispose() };

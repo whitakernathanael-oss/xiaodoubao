@@ -3,39 +3,31 @@ import type { Theme } from "../shared/contracts";
 export type PreviewPage = "chat" | "settings";
 
 function setPreviewVariables(root: HTMLElement, theme: Theme, wallpaperUrl?: string): void {
+  const hasLightText = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const safetyMix = (opacity: number, minimum: number): string =>
+    `${Math.round(Math.max(minimum, Math.min(88, 54 + (1 - opacity) * 28)))}%`;
   const variables: Record<string, string> = {
-    "--p-ink": theme.palette.ink,
-    "--p-muted": theme.palette.mutedInk,
     "--p-accent": theme.palette.accent,
-    "--p-surface": theme.palette.surface,
     "--p-sidebar": theme.regions.sidebar.backgroundColor,
-    "--p-sidebar-opacity": String(theme.regions.sidebar.opacity),
-    "--p-sidebar-text": theme.regions.sidebar.textColor,
     "--p-sidebar-selected": theme.regions.sidebar.selectedColor,
     "--p-sidebar-border": theme.regions.sidebar.borderColor,
     "--p-sidebar-radius": `${theme.regions.sidebar.borderRadius}px`,
     "--p-chat": theme.regions.chat.backgroundColor,
-    "--p-chat-opacity": String(theme.regions.chat.opacity),
     "--p-user": theme.regions.chat.userBubbleColor,
     "--p-assistant": theme.regions.chat.assistantBubbleColor,
-    "--p-chat-text": theme.regions.chat.textColor,
     "--p-chat-border": theme.regions.chat.borderColor,
     "--p-chat-radius": `${theme.regions.chat.borderRadius}px`,
     "--p-chat-shadow": String(theme.regions.chat.shadowStrength),
     "--p-composer": theme.regions.composer.backgroundColor,
-    "--p-composer-opacity": String(theme.regions.composer.opacity),
-    "--p-composer-text": theme.regions.composer.textColor,
     "--p-composer-border": theme.regions.composer.borderColor,
     "--p-composer-radius": `${theme.regions.composer.borderRadius}px`,
     "--p-composer-focus": theme.regions.composer.focusColor,
     "--p-button-primary": theme.regions.buttons.primaryColor,
     "--p-button-bg": theme.regions.buttons.backgroundColor,
-    "--p-button-text": theme.regions.buttons.textColor,
     "--p-button-border": theme.regions.buttons.borderColor,
     "--p-button-radius": `${theme.regions.buttons.borderRadius}px`,
     "--p-button-shadow": String(theme.regions.buttons.shadowStrength),
     "--p-settings": theme.regions.settings.panelColor,
-    "--p-settings-opacity": String(theme.regions.settings.opacity),
     "--p-wallpaper-fit": theme.wallpaper.fit,
     "--p-wallpaper-x": `${theme.wallpaper.positionX}%`,
     "--p-wallpaper-y": `${theme.wallpaper.positionY}%`,
@@ -43,14 +35,24 @@ function setPreviewVariables(root: HTMLElement, theme: Theme, wallpaperUrl?: str
     "--p-wallpaper-blur": `${theme.wallpaper.blur}px`,
     "--p-wallpaper-brightness": `${theme.wallpaper.brightness}%`,
     "--p-overlay": theme.wallpaper.overlayColor,
-    "--p-overlay-opacity": String(theme.wallpaper.overlayOpacity)
+    "--p-overlay-opacity": String(theme.wallpaper.overlayOpacity),
+    "--p-contrast-base": hasLightText ? "#000000" : "#ffffff",
+    "--p-system-text": hasLightText ? "#ffffff" : "#202028",
+    "--p-system-muted": hasLightText ? "rgb(255 255 255 / .72)" : "rgb(32 32 40 / .68)",
+    "--p-wallpaper-safety-opacity": hasLightText ? "0.64" : "0.68",
+    "--p-sidebar-safety-mix": safetyMix(theme.regions.sidebar.opacity, 58),
+    "--p-chat-safety-mix": safetyMix(theme.regions.chat.opacity, 62),
+    "--p-composer-safety-mix": safetyMix(theme.regions.composer.opacity, 64),
+    "--p-button-safety-mix": safetyMix(1, 58),
+    "--p-settings-safety-mix": safetyMix(theme.regions.settings.opacity, 64)
   };
   if (wallpaperUrl) variables["--p-wallpaper"] = `url(${JSON.stringify(wallpaperUrl)})`;
   for (const [name, value] of Object.entries(variables)) root.style.setProperty(name, value);
 }
 
 export function renderPreview(root: HTMLElement, theme: Theme, page: PreviewPage, wallpaperUrl?: string): void {
-  root.className = `preview preview--${page}`;
+  const systemMode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "light-text" : "dark-text";
+  root.className = `preview preview--${page} preview--${systemMode}`;
   setPreviewVariables(root, theme, wallpaperUrl);
   root.innerHTML = page === "chat" ? `
     <div class="preview__wallpaper" aria-hidden="true"></div>

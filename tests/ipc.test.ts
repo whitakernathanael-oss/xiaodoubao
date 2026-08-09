@@ -7,7 +7,7 @@ function services(): IpcServices {
     listThemes: vi.fn(), loadTheme: vi.fn(), saveTheme: vi.fn(), deleteTheme: vi.fn(),
     duplicateTheme: vi.fn(), importTheme: vi.fn(), exportTheme: vi.fn(), chooseWallpaper: vi.fn(),
     getStatus: vi.fn(), startDoubao: vi.fn(), confirmRestart: vi.fn(), applyTheme: vi.fn(),
-    restoreOfficial: vi.fn(), readLog: vi.fn(), chooseDoubaoExecutable: vi.fn()
+    restoreOfficial: vi.fn(), chooseDoubaoExecutable: vi.fn()
   };
 }
 
@@ -15,7 +15,7 @@ describe("bounded IPC", () => {
   it("exposes only the documented channels", () => {
     expect(Object.values(IPC_CHANNELS).sort()).toEqual([
       "adapter:status", "doubao:choose-executable", "doubao:restart",
-      "doubao:start", "log:read", "skin:apply", "skin:restore",
+      "doubao:start", "skin:apply", "skin:restore",
       "theme:delete", "theme:duplicate", "theme:export", "theme:import",
       "theme:list", "theme:load", "theme:save", "wallpaper:choose"
     ].sort());

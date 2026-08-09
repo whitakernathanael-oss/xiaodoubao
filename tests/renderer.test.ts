@@ -24,7 +24,7 @@ function api(): DoubaoSkinApi {
     importTheme: vi.fn(), exportTheme: vi.fn(async () => true), chooseWallpaper: vi.fn(),
     getStatus: vi.fn(async () => ({ kind: "not-running" })), startDoubao: vi.fn(),
     confirmRestart: vi.fn(), applyTheme: vi.fn(async () => ({ kind: "applied" })),
-    restoreOfficial: vi.fn(async () => undefined), readLog: vi.fn(async () => ""),
+    restoreOfficial: vi.fn(async () => undefined),
     chooseDoubaoExecutable: vi.fn()
   };
 }

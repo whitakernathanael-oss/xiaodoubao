@@ -9,18 +9,17 @@ import { applyDerivedPalette } from "../shared/theme-coloring";
 type Control = {
   label: string;
   path: string[];
-  kind: "range";
   min?: number;
   max?: number;
   step?: number;
 };
 
 const WALLPAPER_CONTROLS: Control[] = [
-  { label: "水平位置", path: ["wallpaper", "positionX"], kind: "range", min: 0, max: 100, step: 1 },
-  { label: "垂直位置", path: ["wallpaper", "positionY"], kind: "range", min: 0, max: 100, step: 1 },
-  { label: "缩放", path: ["wallpaper", "scale"], kind: "range", min: 25, max: 300, step: 1 },
-  { label: "模糊", path: ["wallpaper", "blur"], kind: "range", min: 0, max: 40, step: 1 },
-  { label: "亮度", path: ["wallpaper", "brightness"], kind: "range", min: 0, max: 200, step: 1 }
+  { label: "水平位置", path: ["wallpaper", "positionX"], min: 0, max: 100, step: 1 },
+  { label: "垂直位置", path: ["wallpaper", "positionY"], min: 0, max: 100, step: 1 },
+  { label: "缩放", path: ["wallpaper", "scale"], min: 25, max: 300, step: 1 },
+  { label: "模糊", path: ["wallpaper", "blur"], min: 0, max: 40, step: 1 },
+  { label: "亮度", path: ["wallpaper", "brightness"], min: 0, max: 200, step: 1 }
 ];
 
 function valueAt(theme: Theme, path: string[]): unknown {
@@ -61,7 +60,6 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
         </aside>
       </div>
       <footer class="actionbar">
-        <div></div>
         <div><button data-action="restore" class="danger">恢复官方外观</button><button data-action="save">保存主题</button><button data-action="apply" class="primary">应用到豆包</button></div>
       </footer>
     </div>`;

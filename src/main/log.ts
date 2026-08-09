@@ -49,13 +49,4 @@ export class PrivacyLog implements LogWriter {
     if (newline >= 0 && newline + 1 < newest.byteLength) newest = newest.subarray(newline + 1);
     await writeFile(this.file, newest);
   }
-
-  async read(): Promise<string> {
-    await this.queue;
-    try { return await readFile(this.file, "utf8"); }
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
-      throw error;
-    }
-  }
 }

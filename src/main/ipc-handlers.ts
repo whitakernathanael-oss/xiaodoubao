@@ -17,7 +17,6 @@ export interface IpcServices {
   confirmRestart(port: number): MaybePromise<unknown>;
   applyTheme(id: string): MaybePromise<unknown>;
   restoreOfficial(): MaybePromise<void>;
-  readLog(): MaybePromise<string>;
   chooseDoubaoExecutable(): MaybePromise<string | undefined>;
 }
 
@@ -87,8 +86,7 @@ export function registerIpcHandlers(services: IpcServices, ipcMain: IpcMainLike)
     [IPC_CHANNELS.doubaoRestart]: async (_event, value) => services.confirmRestart(port(value)),
     [IPC_CHANNELS.doubaoChooseExecutable]: async () => services.chooseDoubaoExecutable(),
     [IPC_CHANNELS.skinApply]: async (_event, id) => services.applyTheme(themeId(id)),
-    [IPC_CHANNELS.skinRestore]: async () => services.restoreOfficial(),
-    [IPC_CHANNELS.logRead]: async () => services.readLog()
+    [IPC_CHANNELS.skinRestore]: async () => services.restoreOfficial()
   };
   for (const [channel, handler] of Object.entries(handlers)) ipcMain.handle(channel, handler);
   return () => {

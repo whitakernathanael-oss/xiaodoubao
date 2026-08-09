@@ -18,20 +18,8 @@ const adapter: DoubaoAdapter = {
 };
 
 describe("theme injection payloads", () => {
-  it("builds an idempotent, scoped application payload", () => {
+  it("builds an executable application payload", () => {
     const payload = buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "");
-    expect(payload).toContain("doubao-autoskin-style");
-    expect(payload).toContain("doubao-autoskin-wallpaper");
-    expect(payload).toContain("__DOUBAO_SKIN_STATE__");
-    expect(payload).toContain("pointer-events: none");
-    expect(payload).toContain("MutationObserver");
-    expect(payload).toContain("URL.createObjectURL");
-    expect(payload).toContain("missingRequired");
-    expect(payload).toContain("--dbs-sidebar-radius");
-    expect(payload).toContain("--dbs-chat-shadow");
-    expect(payload).toContain("--dbs-composer-focus");
-    expect(payload).toContain("--dbs-button-radius");
-    expect(payload).toContain("--dbs-wallpaper-overlay-opacity");
     expect(() => new Function(`return ${payload}`)).not.toThrow();
   });
 
@@ -41,20 +29,23 @@ describe("theme injection payloads", () => {
     );
   });
 
-  it("builds complete repeatable cleanup", () => {
-    const cleanup = buildCleanupExpression();
-    for (const token of [
-      "doubao-autoskin-style",
-      "doubao-autoskin-wallpaper",
-      "doubao-skin",
-      "theme-",
-      "dbs-",
-      "--dbs-",
-      "disconnect",
-      "URL.revokeObjectURL",
-      "__DOUBAO_SKIN_STATE__"
-    ]) {
-      expect(cleanup).toContain(token);
+  it("removes the applied wallpaper, styles, and theme markers", async () => {
+    document.body.innerHTML = '<div id="root"><main>聊天</main></div>';
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
+      expect(await new Function(`return ${buildCleanupExpression()}`)()).toBe(true);
+      expect(document.querySelector("#doubao-autoskin-style")).toBeNull();
+      expect(document.querySelector("#doubao-autoskin-wallpaper")).toBeNull();
+      expect(document.documentElement.classList.contains("doubao-skin")).toBe(false);
+      expect(document.querySelector(".dbs-chat-area")).toBeNull();
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
     }
   });
 

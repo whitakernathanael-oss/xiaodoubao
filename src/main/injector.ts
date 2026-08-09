@@ -55,7 +55,10 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     }
     root.classList.remove("doubao-skin");
     for (const name of [...root.classList]) if (name.startsWith("theme-")) root.classList.remove(name);
-    for (const property of [...root.style]) if (property.startsWith("--dbs-")) root.style.removeProperty(property);
+    for (let index = root.style.length - 1; index >= 0; index -= 1) {
+      const property = root.style.item(index);
+      if (property.startsWith("--dbs-")) root.style.removeProperty(property);
+    }
     delete global[STATE_KEY];
   };
   if (missingRequired.length > 0) {
@@ -96,24 +99,17 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     `${Math.round(Math.max(minimum, Math.min(88, 54 + (1 - opacity) * 28)))}%`;
 
   const variables: Record<string, string> = {
-    "--dbs-ink": theme.palette.ink,
-    "--dbs-muted-ink": theme.palette.mutedInk,
-    "--dbs-accent": theme.palette.accent,
-    "--dbs-surface": theme.palette.surface,
     "--dbs-sidebar-bg": theme.regions.sidebar.backgroundColor,
-    "--dbs-sidebar-opacity": String(theme.regions.sidebar.opacity),
     "--dbs-sidebar-selected": theme.regions.sidebar.selectedColor,
     "--dbs-sidebar-border": theme.regions.sidebar.borderColor,
     "--dbs-sidebar-radius": `${theme.regions.sidebar.borderRadius}px`,
     "--dbs-chat-bg": theme.regions.chat.backgroundColor,
-    "--dbs-chat-opacity": String(theme.regions.chat.opacity),
     "--dbs-user-bubble": theme.regions.chat.userBubbleColor,
     "--dbs-assistant-bubble": theme.regions.chat.assistantBubbleColor,
     "--dbs-chat-border": theme.regions.chat.borderColor,
     "--dbs-chat-radius": `${theme.regions.chat.borderRadius}px`,
     "--dbs-chat-shadow": String(theme.regions.chat.shadowStrength),
     "--dbs-composer-bg": theme.regions.composer.backgroundColor,
-    "--dbs-composer-opacity": String(theme.regions.composer.opacity),
     "--dbs-composer-border": theme.regions.composer.borderColor,
     "--dbs-composer-radius": `${theme.regions.composer.borderRadius}px`,
     "--dbs-composer-focus": theme.regions.composer.focusColor,
@@ -123,7 +119,6 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     "--dbs-button-radius": `${theme.regions.buttons.borderRadius}px`,
     "--dbs-button-shadow": String(theme.regions.buttons.shadowStrength),
     "--dbs-settings-bg": theme.regions.settings.panelColor,
-    "--dbs-settings-opacity": String(theme.regions.settings.opacity),
     "--dbs-contrast-base": safetyBase,
     "--dbs-wallpaper-safety-opacity": hasLightText ? "0.64" : "0.68",
     "--dbs-sidebar-safety-mix": safeMix(theme.regions.sidebar.opacity, 58),
@@ -208,7 +203,10 @@ function cleanupRuntime(): boolean {
   }
   root.classList.remove("doubao-skin");
   for (const name of [...root.classList]) if (name.startsWith("theme-")) root.classList.remove(name);
-  for (const property of [...root.style]) if (property.startsWith("--dbs-")) root.style.removeProperty(property);
+  for (let index = root.style.length - 1; index >= 0; index -= 1) {
+    const property = root.style.item(index);
+    if (property.startsWith("--dbs-")) root.style.removeProperty(property);
+  }
   delete global[STATE_KEY];
   return true;
 }
