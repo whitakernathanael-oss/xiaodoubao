@@ -5,8 +5,9 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
-const { artifactPaths, removeOldOutput } = require("../tools/release-win.cjs") as {
+const { artifactPaths, forgeCommand, removeOldOutput } = require("../tools/release-win.cjs") as {
   artifactPaths(root: string): { setup: string; portable: string };
+  forgeCommand(environment: NodeJS.ProcessEnv): { file: string; args: string[] };
   removeOldOutput(root: string): string;
 };
 
@@ -32,6 +33,13 @@ describe("Windows release helper", () => {
     expect(artifactPaths("C:\\project")).toEqual({
       setup: path.resolve("C:\\project", "out/make/squirrel.windows/x64/豆包皮肤版-Setup.exe"),
       portable: path.resolve("C:\\project", "out/doubao-autoskin-win32-x64/豆包皮肤版.exe")
+    });
+  });
+
+  it("launches npm through the Windows command processor", () => {
+    expect(forgeCommand({ ComSpec: "C:\\Windows\\System32\\cmd.exe" })).toEqual({
+      file: "C:\\Windows\\System32\\cmd.exe",
+      args: ["/d", "/s", "/c", "npm.cmd run make"]
     });
   });
 });

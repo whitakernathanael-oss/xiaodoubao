@@ -24,6 +24,12 @@ function artifactPaths(projectRoot) {
   };
 }
 
+function forgeCommand(environment) {
+  const file = environment.ComSpec || environment.COMSPEC;
+  if (!file) throw new Error("Windows command processor is unavailable");
+  return { file, args: ["/d", "/s", "/c", "npm.cmd run make"] };
+}
+
 function main() {
   if (process.platform !== "win32") throw new Error("release:win requires Windows");
   const projectRoot = path.resolve(__dirname, "..");
@@ -31,11 +37,13 @@ function main() {
   if (packageJson.name !== "doubao-autoskin") throw new Error("Unexpected project root");
 
   removeOldOutput(projectRoot);
-  const result = spawnSync("npm.cmd", ["run", "make"], {
+  const command = forgeCommand(process.env);
+  const result = spawnSync(command.file, command.args, {
     cwd: projectRoot,
     stdio: "inherit",
     shell: false
   });
+  if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 
   const artifacts = artifactPaths(projectRoot);
@@ -49,4 +57,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { artifactPaths, removeOldOutput };
+module.exports = { artifactPaths, forgeCommand, removeOldOutput };
