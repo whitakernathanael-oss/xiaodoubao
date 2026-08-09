@@ -254,6 +254,46 @@ describe("theme injection payloads", () => {
     }
   });
 
+  it("themes the transient conversation skeleton before adapter markers return", async () => {
+    document.body.innerHTML = `
+      <div id="root">
+        <aside></aside>
+        <main>
+          <div id="loading-surface" class="container-live chrome70-container">
+            <div class="inner-live"><div id="loading-line" class="h-36 skeleton-live"></div></div>
+          </div>
+          <div id="unrelated-skeleton" class="skeleton-live"></div>
+        </main>
+      </div>
+    `;
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
+      const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
+      document.documentElement.classList.remove("doubao-skin");
+      const surfaceSelector = ".chrome70-container";
+      const firstLineSelector = '.chrome70-container [class^="skeleton-"]';
+      const laterLineSelector = '.chrome70-container [class*=" skeleton-"]';
+
+      expect(css).toContain(`${surfaceSelector} { background-color: transparent !important;`);
+      expect(css).toContain(firstLineSelector);
+      expect(css).toContain(laterLineSelector);
+      expect(css).toContain("color-mix(in srgb, currentColor 10%, transparent)");
+      expect(document.querySelector("#loading-surface")!.matches(surfaceSelector)).toBe(true);
+      expect(document.querySelector("#loading-line")!.matches(laterLineSelector)).toBe(true);
+      expect(document.querySelector("#unrelated-skeleton")!.matches(`${firstLineSelector}, ${laterLineSelector}`)).toBe(false);
+      expect(css).not.toContain("html.doubao-skin .chrome70-container");
+      expect(css).not.toContain(".chrome70-container *");
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
   it("uses the adapted application root when a settings dialog has no chat area", async () => {
     document.body.innerHTML = '<div id="root"><div class="settings">设置</div></div>';
     const originalCreateObjectUrl = URL.createObjectURL;

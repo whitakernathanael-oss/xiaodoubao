@@ -220,6 +220,9 @@ html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-b
 html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container .code-area .code-content,
 html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container .code-area > [data-copy-ignore="true"],
 html.doubao-skin .dbs-chat-area:has([data-testid="message-list"]) .custom-code-block-container .code-area > [data-copy-ignore="true"] > [class^="header-"] { background-color: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-composer-safety-mix), var(--dbs-composer-bg)) !important; border-color: var(--dbs-chat-border) !important; }
+.chrome70-container { background-color: transparent !important; }
+.chrome70-container [class^="skeleton-"],
+.chrome70-container [class*=" skeleton-"] { background-color: color-mix(in srgb, currentColor 10%, transparent) !important; }
 html.doubao-skin .dbs-settings-panel { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-settings-safety-mix), var(--dbs-settings-bg)) !important; }
 ${extraCss}`;
 
