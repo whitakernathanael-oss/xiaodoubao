@@ -82,6 +82,19 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     if (name.startsWith("theme-") && name !== `theme-${theme.id}`) root.classList.remove(name);
   }
 
+  const foregroundTarget = [
+    initial.messageUser[0], initial.messageAssistant[0], initial.composer[0], initial.chatArea[0], document.body
+  ].find((element): element is Element => Boolean(element));
+  const foreground = foregroundTarget ? getComputedStyle(foregroundTarget).color : "";
+  const channels = foreground.match(/\d+(?:\.\d+)?/g)?.slice(0, 3).map(Number) ?? [];
+  const foregroundLuminance = channels.length === 3
+    ? (channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722) / 255
+    : (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? 1 : 0);
+  const hasLightText = foregroundLuminance >= 0.5;
+  const safetyBase = hasLightText ? "#000000" : "#ffffff";
+  const safeMix = (opacity: number, minimum: number): string =>
+    `${Math.round(Math.max(minimum, Math.min(88, 54 + (1 - opacity) * 28)))}%`;
+
   const variables: Record<string, string> = {
     "--dbs-ink": theme.palette.ink,
     "--dbs-muted-ink": theme.palette.mutedInk,
@@ -89,7 +102,6 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     "--dbs-surface": theme.palette.surface,
     "--dbs-sidebar-bg": theme.regions.sidebar.backgroundColor,
     "--dbs-sidebar-opacity": String(theme.regions.sidebar.opacity),
-    "--dbs-sidebar-text": theme.regions.sidebar.textColor,
     "--dbs-sidebar-selected": theme.regions.sidebar.selectedColor,
     "--dbs-sidebar-border": theme.regions.sidebar.borderColor,
     "--dbs-sidebar-radius": `${theme.regions.sidebar.borderRadius}px`,
@@ -97,24 +109,28 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     "--dbs-chat-opacity": String(theme.regions.chat.opacity),
     "--dbs-user-bubble": theme.regions.chat.userBubbleColor,
     "--dbs-assistant-bubble": theme.regions.chat.assistantBubbleColor,
-    "--dbs-chat-text": theme.regions.chat.textColor,
     "--dbs-chat-border": theme.regions.chat.borderColor,
     "--dbs-chat-radius": `${theme.regions.chat.borderRadius}px`,
     "--dbs-chat-shadow": String(theme.regions.chat.shadowStrength),
     "--dbs-composer-bg": theme.regions.composer.backgroundColor,
     "--dbs-composer-opacity": String(theme.regions.composer.opacity),
-    "--dbs-composer-text": theme.regions.composer.textColor,
     "--dbs-composer-border": theme.regions.composer.borderColor,
     "--dbs-composer-radius": `${theme.regions.composer.borderRadius}px`,
     "--dbs-composer-focus": theme.regions.composer.focusColor,
     "--dbs-button-primary": theme.regions.buttons.primaryColor,
     "--dbs-button-bg": theme.regions.buttons.backgroundColor,
-    "--dbs-button-text": theme.regions.buttons.textColor,
     "--dbs-button-border": theme.regions.buttons.borderColor,
     "--dbs-button-radius": `${theme.regions.buttons.borderRadius}px`,
     "--dbs-button-shadow": String(theme.regions.buttons.shadowStrength),
     "--dbs-settings-bg": theme.regions.settings.panelColor,
-    "--dbs-settings-opacity": String(theme.regions.settings.opacity)
+    "--dbs-settings-opacity": String(theme.regions.settings.opacity),
+    "--dbs-contrast-base": safetyBase,
+    "--dbs-wallpaper-safety-opacity": hasLightText ? "0.64" : "0.68",
+    "--dbs-sidebar-safety-mix": safeMix(theme.regions.sidebar.opacity, 58),
+    "--dbs-chat-safety-mix": safeMix(theme.regions.chat.opacity, 62),
+    "--dbs-composer-safety-mix": safeMix(theme.regions.composer.opacity, 64),
+    "--dbs-button-safety-mix": safeMix(1, 58),
+    "--dbs-settings-safety-mix": safeMix(theme.regions.settings.opacity, 64)
   };
   for (const [name, value] of Object.entries(variables)) root.style.setProperty(name, value);
 
@@ -123,14 +139,17 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     if (previous?.blobUrl) URL.revokeObjectURL(previous.blobUrl);
     blobUrl = URL.createObjectURL(await (await fetch(wallpaperDataUrl)).blob());
   }
+  const wallpaperHost = (initial.chatArea[0] ?? initial.appRoot[0]) as HTMLElement;
+  wallpaperHost.classList.add("dbs-wallpaper-host");
   let wallpaper = document.getElementById(WALLPAPER_ID) as HTMLDivElement | null;
   if (!wallpaper) {
     wallpaper = document.createElement("div");
     wallpaper.id = WALLPAPER_ID;
-    document.body.prepend(wallpaper);
+    wallpaperHost.prepend(wallpaper);
   }
+  if (wallpaper.parentElement !== wallpaperHost) wallpaperHost.prepend(wallpaper);
   Object.assign(wallpaper.style, {
-    position: "fixed", inset: "0", pointerEvents: "none", zIndex: "0",
+    position: "absolute", inset: "0", pointerEvents: "none", zIndex: "0",
     backgroundImage: `url(${JSON.stringify(blobUrl)})`,
     backgroundRepeat: "no-repeat", backgroundSize: `${theme.wallpaper.fit}`,
     backgroundPosition: `${theme.wallpaper.positionX}% ${theme.wallpaper.positionY}%`,
@@ -147,19 +166,20 @@ async function applyRuntime(theme: Theme, adapter: DoubaoAdapter, wallpaperDataU
     document.head.append(style);
   }
   style.textContent = `
-#doubao-autoskin-wallpaper { pointer-events: none !important; }
-#doubao-autoskin-wallpaper::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--dbs-wallpaper-overlay); opacity: var(--dbs-wallpaper-overlay-opacity); }
-html.doubao-skin body, html.doubao-skin .dbs-app-root { background: transparent !important; position: relative; }
-html.doubao-skin .dbs-app-root { z-index: 1; color: var(--dbs-ink) !important; }
-html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-sidebar-bg) calc(var(--dbs-sidebar-opacity) * 100%), transparent) !important; color: var(--dbs-sidebar-text) !important; border-color: var(--dbs-sidebar-border) !important; border-radius: var(--dbs-sidebar-radius) !important; }
-html.doubao-skin .dbs-sidebar :is([aria-selected="true"], [data-state="active"], .active) { background: var(--dbs-sidebar-selected) !important; }
-html.doubao-skin .dbs-chat-area { background: color-mix(in srgb, var(--dbs-chat-bg) calc(var(--dbs-chat-opacity) * 100%), transparent) !important; color: var(--dbs-chat-text) !important; }
-html.doubao-skin .dbs-message-user { background: var(--dbs-user-bubble) !important; color: var(--dbs-chat-text) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
-html.doubao-skin .dbs-message-assistant { background: var(--dbs-assistant-bubble) !important; color: var(--dbs-chat-text) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
-html.doubao-skin .dbs-composer { background: color-mix(in srgb, var(--dbs-composer-bg) calc(var(--dbs-composer-opacity) * 100%), transparent) !important; color: var(--dbs-composer-text) !important; border: 1px solid var(--dbs-composer-border) !important; border-radius: var(--dbs-composer-radius) !important; }
+#doubao-autoskin-wallpaper { pointer-events: none !important; overflow: hidden !important; }
+#doubao-autoskin-wallpaper::before, #doubao-autoskin-wallpaper::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+#doubao-autoskin-wallpaper::before { background: var(--dbs-contrast-base); opacity: var(--dbs-wallpaper-safety-opacity); }
+#doubao-autoskin-wallpaper::after { background: var(--dbs-wallpaper-overlay); opacity: var(--dbs-wallpaper-overlay-opacity); }
+html.doubao-skin :is(.dbs-chat-area, .dbs-wallpaper-host) { position: relative !important; isolation: isolate !important; background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-chat-bg)) !important; }
+html.doubao-skin :is(.dbs-chat-area, .dbs-wallpaper-host) > :not(#doubao-autoskin-wallpaper) { position: relative !important; z-index: 1 !important; }
+html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-sidebar-safety-mix), var(--dbs-sidebar-bg)) !important; border-color: var(--dbs-sidebar-border) !important; border-radius: var(--dbs-sidebar-radius) !important; }
+html.doubao-skin .dbs-sidebar :is([aria-selected="true"], [data-state="active"], .active) { background: color-mix(in srgb, var(--dbs-contrast-base) 46%, var(--dbs-sidebar-selected)) !important; }
+html.doubao-skin .dbs-message-user { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-user-bubble)) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
+html.doubao-skin .dbs-message-assistant { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-assistant-bubble)) !important; border: 1px solid var(--dbs-chat-border) !important; border-radius: var(--dbs-chat-radius) !important; box-shadow: 0 8px 28px rgb(0 0 0 / calc(var(--dbs-chat-shadow) * .35)) !important; }
+html.doubao-skin .dbs-composer { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-composer-safety-mix), var(--dbs-composer-bg)) !important; border: 1px solid var(--dbs-composer-border) !important; border-radius: var(--dbs-composer-radius) !important; }
 html.doubao-skin .dbs-composer:focus-within { border-color: var(--dbs-composer-focus) !important; }
-html.doubao-skin .dbs-button { --primary-color: var(--dbs-button-primary); background-color: var(--dbs-button-bg) !important; color: var(--dbs-button-text) !important; border-color: var(--dbs-button-border) !important; border-radius: var(--dbs-button-radius) !important; box-shadow: 0 6px 20px rgb(0 0 0 / calc(var(--dbs-button-shadow) * .3)) !important; }
-html.doubao-skin .dbs-settings-panel { background: color-mix(in srgb, var(--dbs-settings-bg) calc(var(--dbs-settings-opacity) * 100%), transparent) !important; }
+html.doubao-skin .dbs-button { --primary-color: var(--dbs-button-primary); background-color: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-button-safety-mix), var(--dbs-button-bg)) !important; border-color: var(--dbs-button-border) !important; border-radius: var(--dbs-button-radius) !important; box-shadow: 0 6px 20px rgb(0 0 0 / calc(var(--dbs-button-shadow) * .3)) !important; }
+html.doubao-skin .dbs-settings-panel { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-settings-safety-mix), var(--dbs-settings-bg)) !important; }
 ${extraCss}`;
 
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -193,6 +213,30 @@ function cleanupRuntime(): boolean {
   return true;
 }
 
+function verifyRuntime(adapter: DoubaoAdapter): boolean {
+  const classNames: Record<string, string> = {
+    appRoot: "dbs-app-root", sidebar: "dbs-sidebar", chatArea: "dbs-chat-area",
+    messageUser: "dbs-message-user", messageAssistant: "dbs-message-assistant",
+    composer: "dbs-composer", buttons: "dbs-button", settingsPanel: "dbs-settings-panel"
+  };
+  const settings = document.querySelector(`.${classNames.settingsPanel}`);
+  const pageState = settings ? "settings" : "chat";
+  const visible = (element: Element | null): boolean => {
+    if (!element?.isConnected) return false;
+    const style = getComputedStyle(element);
+    return style.display !== "none" && style.visibility !== "hidden";
+  };
+  return Boolean(
+    (window as unknown as Record<string, unknown>).__DOUBAO_SKIN_STATE__
+    && document.getElementById("doubao-autoskin-style")
+    && visible(document.getElementById("doubao-autoskin-wallpaper"))
+    && document.documentElement.classList.contains("doubao-skin")
+    && adapter.pageStates[pageState].requiredRegions.every((region) =>
+      visible(document.querySelector(`.${classNames[region]}`))
+    )
+  );
+}
+
 export function buildApplyExpression(
   theme: Theme,
   adapter: DoubaoAdapter,
@@ -207,6 +251,10 @@ export function buildApplyExpression(
 
 export function buildCleanupExpression(): string {
   return `(${cleanupRuntime.toString()})()`;
+}
+
+export function buildVerifyExpression(adapter: DoubaoAdapter): string {
+  return `(${verifyRuntime.toString()})(${JSON.stringify(adapter)})`;
 }
 
 export class Injector {
@@ -227,12 +275,7 @@ export class Injector {
   }
 
   async verify(): Promise<boolean> {
-    return Boolean(await this.session.evaluate(`Boolean(
-      window.__DOUBAO_SKIN_STATE__ &&
-      document.getElementById("doubao-autoskin-style") &&
-      document.getElementById("doubao-autoskin-wallpaper") &&
-      document.documentElement.classList.contains("doubao-skin")
-    )`));
+    return Boolean(await this.session.evaluate(buildVerifyExpression(this.adapter)));
   }
 
   async restore(): Promise<void> {

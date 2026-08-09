@@ -1,5 +1,4 @@
 import type { DoubaoAdapter } from "../shared/contracts";
-import { probePage } from "./adapter-store";
 import type { CdpTarget } from "./cdp";
 import type { InjectionResult } from "./injector";
 import type { LogWriter } from "./log";
@@ -17,6 +16,7 @@ export interface WorkflowSession {
 
 export interface WorkflowInjector {
   apply(theme: ThemeBundle["theme"], wallpaperDataUrl: string, extraCss?: string): Promise<InjectionResult>;
+  verify(): Promise<boolean>;
   restore(): Promise<void>;
 }
 
@@ -27,18 +27,6 @@ export interface WorkflowDependencies {
   connect(url: string): Promise<WorkflowSession>;
   createInjector(session: WorkflowSession, adapter: DoubaoAdapter): WorkflowInjector;
   log: LogWriter;
-}
-
-function selectorProbeExpression(adapter: DoubaoAdapter): string {
-  const selectors = [...new Set(Object.values(adapter.regions).flat())];
-  return `(() => {
-    const counts = {};
-    for (const selector of ${JSON.stringify(selectors)}) {
-      try { counts[selector] = document.querySelectorAll(selector).length; }
-      catch { counts[selector] = 0; }
-    }
-    return { counts };
-  })()`;
 }
 
 function mime(name: string): string {
@@ -69,6 +57,17 @@ export class SkinWorkflow {
     this.active.clear();
   }
 
+  private async rollbackActive(): Promise<void> {
+    let firstError: unknown;
+    for (const { injector, session } of this.active.values()) {
+      try { await injector.restore(); }
+      catch (error) { firstError ??= error; }
+      finally { session.close(); }
+    }
+    this.active.clear();
+    if (firstError) throw firstError;
+  }
+
   async apply(id: string, port: number): Promise<WorkflowStatus> {
     this.status = { kind: "connecting" };
     this.disconnectActive();
@@ -88,34 +87,29 @@ export class SkinWorkflow {
       let partial = false;
       for (const target of targets) {
         const session = await this.dependencies.connect(target.webSocketDebuggerUrl);
-        const raw = await session.evaluate(selectorProbeExpression(adapter));
-        const counts = raw && typeof raw === "object" && (raw as { counts?: unknown }).counts
-          ? (raw as { counts: Record<string, number> }).counts
-          : {};
-        const targetKind = adapter.targets.find((entry) => target.url.startsWith(entry.urlPrefix))?.kind;
-        const settingsMatched = adapter.regions.settingsPanel.some((selector) => (counts[selector] ?? 0) > 0);
-        const pageState = targetKind === "settings" || settingsMatched ? "settings" : "chat";
-        const probe = probePage((selector) => counts[selector] ?? 0, adapter, pageState);
+        const injector = this.dependencies.createInjector(session, adapter);
+        const result = await injector.apply(bundle.theme, dataUrl(bundle), bundle.extraCss);
         await this.dependencies.log.write({
           stage: "probe",
           targetUrl: target.url,
-          status: probe.status,
-          matchCounts: Object.fromEntries(Object.entries(probe.matches).map(([region, match]) => [region, match?.count ?? 0]))
+          status: result.status,
+          matchCounts: {
+            missingRequired: result.missingRequired.length,
+            missingOptional: result.missingOptional.length
+          }
         });
-        if (probe.status === "incompatible") {
-          partial = true;
-          session.close();
-          continue;
-        }
-        const injector = this.dependencies.createInjector(session, adapter);
-        const result = await injector.apply(bundle.theme, dataUrl(bundle), bundle.extraCss);
         if (result.status === "incompatible") {
           partial = true;
           session.close();
           continue;
         }
+        if (!await injector.verify()) {
+          try { await injector.restore(); }
+          finally { session.close(); }
+          throw new Error("Theme verification failed");
+        }
         applied += 1;
-        if (result.status === "partial" || probe.status === "partial") partial = true;
+        if (result.status === "partial") partial = true;
         this.active.set(target.id, { session, injector });
       }
       this.status = applied === 0 ? { kind: "incompatible" }
@@ -124,12 +118,14 @@ export class SkinWorkflow {
       await this.dependencies.log.write({ stage: "apply", status: this.status.kind });
       return this.status;
     } catch (error) {
-      this.disconnectActive();
+      let reported = error;
+      try { await this.rollbackActive(); }
+      catch (rollbackError) { reported = rollbackError; }
       this.status = { kind: "error" };
       await this.dependencies.log.write({
         stage: "apply",
         status: "error",
-        errorType: error instanceof Error ? error.name : "UnknownError"
+        errorType: reported instanceof Error ? reported.name : "UnknownError"
       });
       return this.status;
     }

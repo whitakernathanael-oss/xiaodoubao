@@ -1,5 +1,6 @@
+// @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { buildApplyExpression, buildCleanupExpression } from "../src/main/injector";
+import { buildApplyExpression, buildCleanupExpression, buildVerifyExpression } from "../src/main/injector";
 import type { DoubaoAdapter } from "../src/shared/contracts";
 import { DEFAULT_THEME } from "../src/shared/defaults";
 
@@ -54,6 +55,71 @@ describe("theme injection payloads", () => {
       "__DOUBAO_SKIN_STATE__"
     ]) {
       expect(cleanup).toContain(token);
+    }
+  });
+
+  it("keeps system text untouched while mounting wallpaper inside the chat area", async () => {
+    document.body.innerHTML = `
+      <div id="root"><aside>导航</aside><main><p class="user">用户消息</p><p class="assistant">助手消息</p><textarea></textarea><button>发送</button></main></div>
+    `;
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      const payload = buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "");
+      const result = await new Function(`return ${payload}`)() as { status: string };
+      const main = document.querySelector("main")!;
+      const wallpaper = document.querySelector("#doubao-autoskin-wallpaper")!;
+      const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
+
+      expect(result.status).toBe("partial");
+      expect(wallpaper.parentElement).toBe(main);
+      expect(css).toContain("--dbs-contrast-base");
+      expect(css).not.toMatch(/(?:^|[;{\n])\s*(?:color|fill|caret-color)\s*:/i);
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
+  it("uses the adapted application root when a settings dialog has no chat area", async () => {
+    document.body.innerHTML = '<div id="root"><div class="settings">设置</div></div>';
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      const payload = buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "");
+      const result = await new Function(`return ${payload}`)() as { status: string };
+
+      expect(result.status).toBe("partial");
+      expect(document.querySelector("#doubao-autoskin-wallpaper")!.parentElement?.id).toBe("root");
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
+  it("verifies required semantic regions are still visible", async () => {
+    document.body.innerHTML = '<div id="root"><main>聊天</main></div>';
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      const payload = buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "");
+      await new Function(`return ${payload}`)();
+
+      expect(await new Function(`return ${buildVerifyExpression(adapter)}`)()).toBe(true);
+      document.querySelector<HTMLElement>("main")!.style.display = "none";
+      expect(await new Function(`return ${buildVerifyExpression(adapter)}`)()).toBe(false);
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
     }
   });
 });
