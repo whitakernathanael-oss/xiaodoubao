@@ -1,12 +1,12 @@
 import { app, dialog } from "electron";
 import { randomUUID } from "node:crypto";
-import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { IpcServices } from "./ipc-handlers";
 import { AdapterStore } from "./adapter-store";
 import { CdpSession, fetchTargets } from "./cdp";
 import {
-  closeDoubaoGracefully,
+  closeDoubaoForRestart,
   findDoubaoExecutable,
   launchDoubao,
   probeDoubaoPort
@@ -17,14 +17,22 @@ import { resolveBundledPaths, resolveDataPaths } from "./paths";
 import { ThemeArchive } from "./theme-archive";
 import { ThemeStore } from "./theme-store";
 import { SkinWorkflow } from "./workflow";
-import type { SaveThemeInput, WallpaperSelection } from "../shared/ipc";
+import { SkinGuardian } from "./skin-guardian";
+import { SkinStateStore } from "./skin-state";
+import { installGuardianStartup, removeGuardianStartup, windowsStartupFolder } from "./startup-shortcut";
+import { inspectWallpaper, validateWallpaperByteLength } from "./wallpaper-validation";
+import type { SaveThemeInput } from "../shared/ipc";
+import { detectWallpaperFormat, normalizeWallpaperName } from "../shared/wallpaper-format";
 
 interface AppSettings {
   doubaoExecutable?: string;
   port: number;
+  skinPersistenceEnabled: boolean;
+  confirmBeforeRestart: boolean;
+  skinTemporarilyDisabled: boolean;
 }
 
-const DEFAULT_SETTINGS: AppSettings = { port: 9225 };
+const DEFAULT_SETTINGS: AppSettings = { port: 9225, skinPersistenceEnabled: true, confirmBeforeRestart: true, skinTemporarilyDisabled: false };
 
 class SettingsStore {
   constructor(private readonly file: string) {}
@@ -34,6 +42,9 @@ class SettingsStore {
       const parsed = JSON.parse(await readFile(this.file, "utf8")) as Partial<AppSettings>;
       return {
         port: Number.isInteger(parsed.port) && parsed.port! > 0 && parsed.port! <= 65_535 ? parsed.port! : 9225,
+        skinPersistenceEnabled: parsed.skinPersistenceEnabled !== false,
+        confirmBeforeRestart: parsed.confirmBeforeRestart !== false,
+        skinTemporarilyDisabled: parsed.skinTemporarilyDisabled === true,
         ...(typeof parsed.doubaoExecutable === "string" ? { doubaoExecutable: parsed.doubaoExecutable } : {})
       };
     } catch (error) {
@@ -81,7 +92,9 @@ async function waitForPort(port: number, adapter: Awaited<ReturnType<AdapterStor
 export interface ApplicationRuntime {
   services: IpcServices;
   workflow: SkinWorkflow;
+  startGuardian(): Promise<void>;
   dispose(): void;
+  persistenceEnabled(): boolean;
 }
 
 export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
@@ -89,6 +102,8 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
   const bundled = resolveBundledPaths(app.isPackaged, app.getAppPath(), process.resourcesPath);
   const settingsStore = new SettingsStore(data.settings);
   let settings = await settingsStore.load();
+  const skinState = new SkinStateStore(data.activeSkin);
+  let persistenceActive = Boolean(await skinState.load());
   const themeStore = new ThemeStore(data.themes, bundled.themes);
   const adapterStore = new AdapterStore(data.adapter, bundled.adapter);
   const archive = new ThemeArchive(themeStore);
@@ -101,6 +116,33 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     createInjector: (session, adapter) => new Injector(session, adapter),
     log
   });
+  const restartRunningDoubao = async (port: number): Promise<boolean> => {
+    if (!await closeDoubaoForRestart()) return false;
+    const executable = await existingExecutable(settings.doubaoExecutable);
+    if (!executable) return false;
+    const adapter = await adapterStore.load();
+    launchDoubao(executable, port);
+    return waitForPort(port, adapter);
+  };
+  const guardian = new SkinGuardian({
+    loadState: () => settings.skinTemporarilyDisabled ? Promise.resolve(undefined) : skinState.load(),
+    probe: async (port) => probeDoubaoPort(port, await adapterStore.load()),
+    launch: launchDoubao,
+    apply: (id, port) => workflow.apply(id, port),
+    shouldRestartRunningDoubao: () => !settings.confirmBeforeRestart && !settings.skinTemporarilyDisabled,
+    restartRunningDoubao,
+    rollback: (id) => workflow.restoreThemeIfActive(id),
+    delay: (milliseconds, callback) => setTimeout(callback, milliseconds),
+    cancel: clearTimeout
+  });
+
+  const removePersistence = async (): Promise<void> => {
+    guardian.stop();
+    workflow.dispose();
+    await skinState.disable();
+    persistenceActive = false;
+    if (app.isPackaged && process.platform === "win32") await removeGuardianStartup(windowsStartupFolder());
+  };
 
   const chooseExecutable = async (): Promise<string | undefined> => {
     const result = await dialog.showOpenDialog({
@@ -117,6 +159,7 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
   };
 
   const start = async (port: number): Promise<unknown> => {
+    if (settings.skinTemporarilyDisabled) return { kind: "disabled", message: "皮肤已暂时停用" };
     settings = { ...settings, port };
     await settingsStore.save(settings);
     const adapter = await adapterStore.load();
@@ -154,7 +197,11 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     loadTheme: (id) => themeStore.load(id),
     loadWallpaper,
     saveTheme,
-    deleteTheme: (id) => themeStore.remove(id),
+    deleteTheme: async (id) => {
+      const active = await skinState.load();
+      if (active?.themeId === id) await removePersistence();
+      await themeStore.remove(id);
+    },
     duplicateTheme: (id) => themeStore.duplicate(id),
     importTheme: async () => {
       const result = await dialog.showOpenDialog({
@@ -182,7 +229,17 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
       });
       if (result.canceled) return undefined;
       const file = result.filePaths[0];
-      return { name: path.basename(file), mime: wallpaperMime(file), bytes: await readFile(file) };
+      validateWallpaperByteLength((await stat(file)).size);
+      const bytes = await readFile(file);
+      const format = detectWallpaperFormat(bytes);
+      if (!format) throw new Error("选择的文件不是受支持的图片");
+      const name = normalizeWallpaperName(path.basename(file), format);
+      inspectWallpaper(name, bytes);
+      return {
+        name,
+        mime: format.mime,
+        bytes
+      };
     },
     getStatus: async () => {
       if (workflow.hasActiveSessions()) return workflow.getStatus();
@@ -194,26 +251,60 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     },
     startDoubao: start,
     confirmRestart: async (port) => {
-      const response = await dialog.showMessageBox({
-        type: "warning",
-        title: "重启豆包",
-        message: "请先从系统托盘正常退出豆包。",
-        detail: "保存未完成的内容，在任务栏右下角右键豆包图标，选择“退出”。完成后回到这里继续；工具不会强制结束进程。",
-        buttons: ["取消", "已退出豆包，继续"],
-        defaultId: 0,
-        cancelId: 0
-      });
-      if (response.response !== 1) return { kind: "restart-required" };
-      if (!await closeDoubaoGracefully(true)) return { kind: "error", reason: "graceful-close-failed" };
-      const executable = await existingExecutable(settings.doubaoExecutable);
-      if (!executable) return { kind: "error", reason: "doubao-not-found" };
-      const adapter = await adapterStore.load();
-      launchDoubao(executable, port);
-      return await waitForPort(port, adapter) ? { kind: "connecting" } : { kind: "error", reason: "startup-timeout" };
+      if (settings.skinTemporarilyDisabled) return { kind: "disabled", message: "皮肤已暂时停用" };
+      if (settings.confirmBeforeRestart) {
+        const response = await dialog.showMessageBox({
+          type: "warning", title: "重启豆包",
+          message: "豆包未以皮肤模式启动。关闭并重新启动豆包以恢复皮肤？",
+          detail: "豆包中未发送的文字可能丢失。",
+          buttons: ["取消", "关闭并重启"], defaultId: 0, cancelId: 0
+        });
+        if (response.response !== 1) return { kind: "restart-required" };
+      }
+      return await restartRunningDoubao(port) ? { kind: "connecting" } : { kind: "error", reason: "close-failed" };
     },
-    applyTheme: (id) => workflow.apply(id, settings.port),
-    restoreOfficial: () => workflow.restore(settings.port),
+    applyTheme: async (id) => {
+      if (settings.skinTemporarilyDisabled) return { kind: "disabled", message: "皮肤已暂时停用" };
+      const result = await workflow.apply(id, settings.port);
+      if ((result.kind === "applied" || result.kind === "partial") && settings.skinPersistenceEnabled) {
+        const executable = await existingExecutable(settings.doubaoExecutable);
+        if (executable) {
+           await skinState.save({ version: 1, themeId: id, port: settings.port, doubaoExecutable: executable, updatedAt: new Date().toISOString() });
+           persistenceActive = true;
+          if (app.isPackaged && process.platform === "win32") await installGuardianStartup(process.execPath, windowsStartupFolder());
+          await guardian.startAlreadyApplied();
+        }
+      }
+      return result;
+    },
+    restoreOfficial: async () => {
+      settings = { ...settings, skinPersistenceEnabled: false };
+      await settingsStore.save(settings);
+      await removePersistence();
+      await workflow.restore(settings.port);
+    },
+    getSkinPersistence: async () => ({ enabled: settings.skinPersistenceEnabled }),
+    setSkinPersistence: async (enabled) => {
+      settings = { ...settings, skinPersistenceEnabled: enabled };
+      await settingsStore.save(settings);
+      if (!enabled) await removePersistence();
+      return { enabled };
+    },
+    getSkinAutomation: async () => ({ confirmBeforeRestart: settings.confirmBeforeRestart, temporarilyDisabled: settings.skinTemporarilyDisabled }),
+    setSkinAutomation: async (patch) => {
+      settings = { ...settings, ...patch };
+      await settingsStore.save(settings);
+      if (settings.skinTemporarilyDisabled) guardian.stop();
+      else if (settings.skinPersistenceEnabled && persistenceActive) await guardian.start();
+      return { confirmBeforeRestart: settings.confirmBeforeRestart, temporarilyDisabled: settings.skinTemporarilyDisabled };
+    },
     chooseDoubaoExecutable: chooseExecutable
   };
-  return { services, workflow, dispose: () => workflow.dispose() };
+  return {
+    services,
+    workflow,
+    startGuardian: async () => { if (!settings.skinTemporarilyDisabled) await guardian.start(); },
+    persistenceEnabled: () => settings.skinPersistenceEnabled && persistenceActive,
+    dispose: () => { guardian.stop(); workflow.dispose(); }
+  };
 }

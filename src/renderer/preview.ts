@@ -6,12 +6,15 @@ function setPreviewVariables(root: HTMLElement, theme: Theme, wallpaperUrl?: str
   const hasLightText = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const safetyMix = (opacity: number, minimum: number): string =>
     `${Math.round(Math.max(minimum, Math.min(88, 54 + (1 - opacity) * 28)))}%`;
+  const sidebarAlpha = `${Math.round(Math.max(0, Math.min(1, theme.regions.sidebar.opacity)) * 100)}%`;
   const variables: Record<string, string> = {
     "--p-accent": theme.palette.accent,
     "--p-sidebar": theme.regions.sidebar.backgroundColor,
     "--p-sidebar-selected": theme.regions.sidebar.selectedColor,
     "--p-sidebar-border": theme.regions.sidebar.borderColor,
     "--p-sidebar-radius": `${theme.regions.sidebar.borderRadius}px`,
+    "--p-sidebar-alpha": sidebarAlpha,
+    "--p-sidebar-layer": `color-mix(in srgb,color-mix(in srgb,var(--p-contrast-base) 82%,var(--p-sidebar)) ${sidebarAlpha},transparent)`,
     "--p-chat": theme.regions.chat.backgroundColor,
     "--p-user": theme.regions.chat.userBubbleColor,
     "--p-assistant": theme.regions.chat.assistantBubbleColor,
@@ -40,13 +43,16 @@ function setPreviewVariables(root: HTMLElement, theme: Theme, wallpaperUrl?: str
     "--p-system-text": hasLightText ? "#ffffff" : "#202028",
     "--p-system-muted": hasLightText ? "rgb(255 255 255 / .72)" : "rgb(32 32 40 / .68)",
     "--p-wallpaper-safety-opacity": hasLightText ? "0.64" : "0.68",
-    "--p-sidebar-safety-mix": safetyMix(theme.regions.sidebar.opacity, 58),
     "--p-chat-safety-mix": safetyMix(theme.regions.chat.opacity, 62),
+    "--p-chat-layer": wallpaperUrl
+      ? "transparent"
+      : "color-mix(in srgb,var(--p-contrast-base) var(--p-chat-safety-mix),var(--p-chat))",
     "--p-composer-safety-mix": safetyMix(theme.regions.composer.opacity, 64),
     "--p-button-safety-mix": safetyMix(1, 58),
     "--p-settings-safety-mix": safetyMix(theme.regions.settings.opacity, 64)
   };
   if (wallpaperUrl) variables["--p-wallpaper"] = `url(${JSON.stringify(wallpaperUrl)})`;
+  else root.style.removeProperty("--p-wallpaper");
   for (const [name, value] of Object.entries(variables)) root.style.setProperty(name, value);
 }
 

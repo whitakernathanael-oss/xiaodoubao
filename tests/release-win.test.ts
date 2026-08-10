@@ -18,6 +18,11 @@ afterEach(async () => {
 });
 
 describe("Windows release helper", () => {
+  it("publishes the persistent-skin release version", async () => {
+    const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8"));
+    expect(packageJson.version).toBe("0.1.12");
+  });
+
   it("deletes only the project out directory", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "doubao-release-"));
     temporaryRoots.push(root);

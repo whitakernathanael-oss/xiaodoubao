@@ -7,6 +7,7 @@ import { registerIpcHandlers } from "./main/ipc-handlers";
 let mainWindow: BrowserWindow | undefined;
 let runtime: ApplicationRuntime | undefined;
 let removeHandlers: (() => void) | undefined;
+const guardianMode = process.argv.includes("--skin-guardian");
 
 app.disableHardwareAcceleration();
 
@@ -55,6 +56,11 @@ function createWindow(): BrowserWindow {
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) void window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   else void window.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   window.on("close", (event) => {
+    if (runtime?.persistenceEnabled()) {
+      event.preventDefault();
+      window.hide();
+      return;
+    }
     if (!runtime?.workflow.hasActiveSessions()) return;
     const choice = dialog.showMessageBoxSync(window, {
       type: "question",
@@ -72,10 +78,15 @@ function createWindow(): BrowserWindow {
 if (!handleSquirrelEvent()) {
   app.whenReady().then(async () => {
     runtime = await createApplicationRuntime();
+    if (guardianMode) {
+      await runtime.startGuardian();
+      return;
+    }
     removeHandlers = registerIpcHandlers(runtime.services, ipcMain);
     mainWindow = createWindow();
     app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow();
+      if (!mainWindow) mainWindow = createWindow();
+      else { mainWindow.show(); mainWindow.focus(); }
     });
   }).catch((error) => {
     dialog.showErrorBox("豆包皮肤版启动失败", error instanceof Error ? error.message : String(error));
@@ -88,4 +99,6 @@ app.on("before-quit", () => {
   runtime?.dispose();
 });
 
-app.on("window-all-closed", () => app.quit());
+app.on("window-all-closed", () => {
+  if (!runtime?.persistenceEnabled()) app.quit();
+});

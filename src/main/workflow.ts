@@ -40,7 +40,7 @@ function dataUrl(bundle: ThemeBundle): string {
 
 export class SkinWorkflow {
   private status: WorkflowStatus = { kind: "not-running" };
-  private readonly active = new Map<string, { session: WorkflowSession; injector: WorkflowInjector }>();
+  private readonly active = new Map<string, { themeId: string; session: WorkflowSession; injector: WorkflowInjector }>();
 
   constructor(private readonly dependencies: WorkflowDependencies) {}
 
@@ -66,6 +66,17 @@ export class SkinWorkflow {
     }
     this.active.clear();
     if (firstError) throw firstError;
+  }
+
+  async restoreThemeIfActive(themeId: string): Promise<void> {
+    for (const [targetId, active] of this.active) {
+      if (active.themeId !== themeId) continue;
+      try { await active.injector.restore(); }
+      finally {
+        active.session.close();
+        this.active.delete(targetId);
+      }
+    }
   }
 
   async apply(id: string, port: number): Promise<WorkflowStatus> {
@@ -110,7 +121,7 @@ export class SkinWorkflow {
         }
         applied += 1;
         if (result.status === "partial") partial = true;
-        this.active.set(target.id, { session, injector });
+        this.active.set(target.id, { themeId: id, session, injector });
       }
       this.status = applied === 0 ? { kind: "incompatible" }
         : partial ? { kind: "partial" }

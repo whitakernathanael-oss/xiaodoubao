@@ -7,7 +7,8 @@ function services(): IpcServices {
     listThemes: vi.fn(), loadTheme: vi.fn(), loadWallpaper: vi.fn(), saveTheme: vi.fn(), deleteTheme: vi.fn(),
     duplicateTheme: vi.fn(), importTheme: vi.fn(), exportTheme: vi.fn(), chooseWallpaper: vi.fn(),
     getStatus: vi.fn(), startDoubao: vi.fn(), confirmRestart: vi.fn(), applyTheme: vi.fn(),
-    restoreOfficial: vi.fn(), chooseDoubaoExecutable: vi.fn()
+    restoreOfficial: vi.fn(), chooseDoubaoExecutable: vi.fn(),
+    getSkinPersistence: vi.fn(), setSkinPersistence: vi.fn(), getSkinAutomation: vi.fn(), setSkinAutomation: vi.fn()
   };
 }
 
@@ -15,7 +16,7 @@ describe("bounded IPC", () => {
   it("exposes only the documented channels", () => {
     expect(Object.values(IPC_CHANNELS).sort()).toEqual([
       "adapter:status", "doubao:choose-executable", "doubao:restart",
-      "doubao:start", "skin:apply", "skin:restore",
+      "doubao:start", "skin:apply", "skin:automation:get", "skin:automation:set", "skin:persistence:get", "skin:persistence:set", "skin:restore",
       "theme:delete", "theme:duplicate", "theme:export", "theme:import",
       "theme:list", "theme:load", "theme:save", "wallpaper:choose", "wallpaper:load"
     ].sort());
@@ -44,5 +45,22 @@ describe("bounded IPC", () => {
 
     await expect(handlers.get(IPC_CHANNELS.themeLoad)?.({}, "../escape")).rejects.toThrow(/theme id/i);
     expect(loadTheme).not.toHaveBeenCalled();
+  });
+
+  it("accepts only a boolean persistence setting", async () => {
+    const current = { ...services(), setSkinPersistence: vi.fn(async () => ({ enabled: true })) };
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    registerIpcHandlers(current, { handle: (channel, handler) => handlers.set(channel, handler), removeHandler: () => undefined });
+
+    await expect(handlers.get(IPC_CHANNELS.skinPersistenceSet)?.({}, true)).resolves.toEqual({ enabled: true });
+    await expect(handlers.get(IPC_CHANNELS.skinPersistenceSet)?.({}, "true")).rejects.toThrow(/boolean/i);
+  });
+
+  it("accepts only known boolean automation settings", async () => {
+    const current = { ...services(), setSkinAutomation: vi.fn(async () => ({ confirmBeforeRestart: true, temporarilyDisabled: false })) };
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    registerIpcHandlers(current, { handle: (channel, handler) => handlers.set(channel, handler), removeHandler: () => undefined });
+    await expect(handlers.get(IPC_CHANNELS.skinAutomationSet)?.({}, { temporarilyDisabled: true })).resolves.toEqual({ confirmBeforeRestart: true, temporarilyDisabled: false });
+    await expect(handlers.get(IPC_CHANNELS.skinAutomationSet)?.({}, { temporarilyDisabled: "true" })).rejects.toThrow(/boolean/i);
   });
 });

@@ -48,7 +48,7 @@ function statusLabel(status: unknown): string {
   const kind = details?.kind;
   return ({
     "not-running": "豆包未启动", "restart-required": "需要确认重启", connecting: "正在连接",
-    applied: "已应用", partial: "部分兼容", incompatible: "当前版本不兼容", error: "操作失败"
+    applied: "已应用", partial: "部分兼容", incompatible: "当前版本不兼容", disabled: "皮肤已暂时停用", error: "操作失败"
   } as Record<string, string>)[kind ?? ""] ?? "准备就绪";
 }
 
@@ -57,7 +57,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     <div class="app-shell">
       <header class="topbar">
         <div class="wordmark"><span>豆</span><div><b>豆包皮肤版</b><small>Doubao AutoSkin</small></div></div>
-        <div class="topbar__status"><i></i><span data-role="status">正在检查豆包…</span><button data-action="start">启动 / 连接</button></div>
+        <div class="topbar__status"><label class="persistence"><input type="checkbox" data-action="persistence">自动保持皮肤</label><label class="persistence"><input type="checkbox" data-action="confirm-before-restart">关闭豆包前询问我</label><label class="persistence"><input type="checkbox" data-action="temporarily-disable-skin">暂时停用皮肤</label><i></i><span data-role="status">正在检查豆包…</span><button data-action="start">启动 / 连接</button></div>
       </header>
       <div class="workspace">
         <aside class="theme-panel">
@@ -85,6 +85,9 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   const preview = root.querySelector<HTMLElement>("[data-role='preview']")!;
   const status = root.querySelector<HTMLElement>("[data-role='status']")!;
   const nameInput = root.querySelector<HTMLInputElement>("[data-role='theme-name']")!;
+  const persistence = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
+  const confirmBeforeRestart = root.querySelector<HTMLInputElement>("[data-action='confirm-before-restart']")!;
+  const temporarilyDisableSkin = root.querySelector<HTMLInputElement>("[data-action='temporarily-disable-skin']")!;
   let summaries: ThemeSummary[] = [];
   let selectedSummary: ThemeSummary | undefined;
   let state: EditorState;
@@ -98,6 +101,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   const setStatus = (value: unknown) => { status.textContent = statusLabel(value); };
 
   const startOrConnect = async (): Promise<void> => {
+    if (temporarilyDisableSkin.checked) { setStatus({ kind: "disabled", message: "皮肤已暂时停用" }); return; }
     let result = await api.startDoubao();
     const details = result && typeof result === "object" ? result as { kind?: string; reason?: string } : {};
     if (details.kind === "restart-required") {
@@ -277,6 +281,20 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     setStatus(await api.applyTheme(id));
   })().catch((error) => setStatus({ kind: "error", error })));
   root.querySelector("[data-action='restore']")!.addEventListener("click", () => void api.restoreOfficial().then(() => setStatus({ kind: "not-running" })));
+  persistence.addEventListener("change", () => void api.setSkinPersistence(persistence.checked).then((result) => {
+    persistence.checked = result.enabled;
+    setStatus({ kind: "applied", message: result.enabled ? "自动保持皮肤已开启" : "关闭后不自动恢复" });
+  }).catch((error) => setStatus({ kind: "error", error })));
+  const saveAutomation = () => void api.setSkinAutomation({
+    confirmBeforeRestart: confirmBeforeRestart.checked,
+    temporarilyDisabled: temporarilyDisableSkin.checked
+  }).then((result) => {
+    confirmBeforeRestart.checked = result.confirmBeforeRestart;
+    temporarilyDisableSkin.checked = result.temporarilyDisabled;
+    setStatus({ kind: result.temporarilyDisabled ? "disabled" : "applied", message: result.temporarilyDisabled ? "皮肤已暂时停用" : "皮肤自动恢复已开启" });
+  }).catch((error) => setStatus({ kind: "error", error }));
+  confirmBeforeRestart.addEventListener("change", saveAutomation);
+  temporarilyDisableSkin.addEventListener("change", saveAutomation);
   root.querySelector("[data-action='start']")!.addEventListener("click", () => void startOrConnect().catch((error) => setStatus({ kind: "error", error })));
   root.querySelector("[data-action='delete']")!.addEventListener("click", () => void api.deleteTheme(state.theme.id).then(async () => {
     summaries = await api.listThemes(); if (summaries[0]) await loadTheme(summaries[0].id);
@@ -289,6 +307,10 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   summaries = await api.listThemes();
   if (summaries.length === 0) throw new Error("No themes are available");
   await loadTheme(summaries[0].id);
+  persistence.checked = (await api.getSkinPersistence()).enabled;
+  const automation = await api.getSkinAutomation();
+  confirmBeforeRestart.checked = automation.confirmBeforeRestart;
+  temporarilyDisableSkin.checked = automation.temporarilyDisabled;
   setStatus(await api.getStatus());
 }
 

@@ -18,6 +18,10 @@ export interface IpcServices {
   confirmRestart(port: number): MaybePromise<unknown>;
   applyTheme(id: string): MaybePromise<unknown>;
   restoreOfficial(): MaybePromise<void>;
+  getSkinPersistence(): MaybePromise<{ enabled: boolean }>;
+  setSkinPersistence(enabled: boolean): MaybePromise<{ enabled: boolean }>;
+  getSkinAutomation(): MaybePromise<{ confirmBeforeRestart: boolean; temporarilyDisabled: boolean }>;
+  setSkinAutomation(settings: { confirmBeforeRestart?: boolean; temporarilyDisabled?: boolean }): MaybePromise<{ confirmBeforeRestart: boolean; temporarilyDisabled: boolean }>;
   chooseDoubaoExecutable(): MaybePromise<string | undefined>;
 }
 
@@ -37,6 +41,22 @@ function port(value: unknown): number {
     throw new Error("Remote debugging port is invalid");
   }
   return resolved as number;
+}
+
+function boolean(value: unknown): boolean {
+  if (typeof value !== "boolean") throw new Error("Persistence setting must be a boolean");
+  return value;
+}
+
+function skinAutomation(value: unknown): { confirmBeforeRestart?: boolean; temporarilyDisabled?: boolean } {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error("Skin automation settings are invalid");
+  const item = value as Record<string, unknown>;
+  for (const [key, entry] of Object.entries(item)) {
+    if ((key !== "confirmBeforeRestart" && key !== "temporarilyDisabled") || typeof entry !== "boolean") {
+      throw new Error("Skin automation settings must be booleans");
+    }
+  }
+  return item;
 }
 
 function wallpaper(value: unknown): WallpaperSelection | undefined {
@@ -88,7 +108,11 @@ export function registerIpcHandlers(services: IpcServices, ipcMain: IpcMainLike)
     [IPC_CHANNELS.doubaoRestart]: async (_event, value) => services.confirmRestart(port(value)),
     [IPC_CHANNELS.doubaoChooseExecutable]: async () => services.chooseDoubaoExecutable(),
     [IPC_CHANNELS.skinApply]: async (_event, id) => services.applyTheme(themeId(id)),
-    [IPC_CHANNELS.skinRestore]: async () => services.restoreOfficial()
+    [IPC_CHANNELS.skinRestore]: async () => services.restoreOfficial(),
+    [IPC_CHANNELS.skinPersistenceGet]: async () => services.getSkinPersistence(),
+    [IPC_CHANNELS.skinPersistenceSet]: async (_event, enabled) => services.setSkinPersistence(boolean(enabled)),
+    [IPC_CHANNELS.skinAutomationGet]: async () => services.getSkinAutomation(),
+    [IPC_CHANNELS.skinAutomationSet]: async (_event, settings) => services.setSkinAutomation(skinAutomation(settings))
   };
   for (const [channel, handler] of Object.entries(handlers)) ipcMain.handle(channel, handler);
   return () => {
