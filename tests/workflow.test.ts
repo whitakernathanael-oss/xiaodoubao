@@ -131,4 +131,19 @@ describe("skin workflow", () => {
     expect(closeFirst).toHaveBeenCalledOnce();
     expect(closeSecond).toHaveBeenCalledOnce();
   });
+
+  it("restores only the active matching theme after cancelled guardian work", async () => {
+    const injector = {
+      apply: vi.fn(async () => ({ status: "compatible", missingRequired: [], missingOptional: [] })),
+      verify: vi.fn(async () => true),
+      restore: vi.fn(async () => undefined)
+    };
+    const { workflow, close } = workflowWith(injector);
+
+    await workflow.apply(DEFAULT_THEME.id, 9225);
+    await workflow.restoreThemeIfActive(DEFAULT_THEME.id);
+
+    expect(injector.restore).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledOnce();
+  });
 });

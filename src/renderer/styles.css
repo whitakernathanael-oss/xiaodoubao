@@ -22,6 +22,7 @@ button:disabled { cursor: not-allowed; opacity: .42; }
 .topbar__status { display: flex; align-items: center; gap: 8px; color: #62626e; font-size: 13px; }
 .topbar__status i { width: 8px; height: 8px; border-radius: 50%; background: #6bc58a; box-shadow: 0 0 0 4px #e8f7ed; }
 .topbar__status button { margin-left: 8px; padding: 8px 12px; border: 1px solid #dedee8; border-radius: 9px; background: #fff; color: #4c4c58; }
+.persistence { display:flex; align-items:center; gap:4px; color:#666574; font-size:11px; white-space:nowrap; }.persistence input { accent-color:#7257dd; }
 
 .workspace { min-height: 0; display: grid; grid-template-columns: 220px minmax(480px,1fr) 290px; gap: 1px; background: #dedee5; }
 .theme-panel, .control-panel, .stage { min-height: 0; background: #f8f8fa; }

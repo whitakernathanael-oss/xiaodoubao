@@ -27,7 +27,11 @@ function api(): DoubaoSkinApi {
     getStatus: vi.fn(async () => ({ kind: "not-running" })), startDoubao: vi.fn(),
     confirmRestart: vi.fn(), applyTheme: vi.fn(async () => ({ kind: "applied" })),
     restoreOfficial: vi.fn(async () => undefined),
-    chooseDoubaoExecutable: vi.fn()
+    chooseDoubaoExecutable: vi.fn(),
+    getSkinPersistence: vi.fn(async () => ({ enabled: true })),
+    setSkinPersistence: vi.fn(async (enabled: boolean) => ({ enabled })),
+    getSkinAutomation: vi.fn(async () => ({ confirmBeforeRestart: true, temporarilyDisabled: false })),
+    setSkinAutomation: vi.fn(async (settings: { confirmBeforeRestart?: boolean; temporarilyDisabled?: boolean }) => ({ confirmBeforeRestart: settings.confirmBeforeRestart ?? true, temporarilyDisabled: settings.temporarilyDisabled ?? false }))
   };
 }
 
@@ -73,6 +77,9 @@ describe("single-window editor", () => {
     expect(root.querySelector("[data-preview-page='settings']")).not.toBeNull();
     expect(root.querySelector("[data-role='region-controls']")).not.toBeNull();
     expect(root.querySelector("[data-action='restore']")).not.toBeNull();
+    expect(root.querySelector("[data-action='persistence']")).not.toBeNull();
+    expect(root.querySelector("[data-action='confirm-before-restart']")).not.toBeNull();
+    expect(root.querySelector("[data-action='temporarily-disable-skin']")).not.toBeNull();
 
     root.querySelector<HTMLButtonElement>("[data-action='apply']")!.click();
     await new Promise((resolve) => setTimeout(resolve, 0));

@@ -16,6 +16,10 @@ const api: DoubaoSkinApi = Object.freeze({
   confirmRestart: (port?: number) => ipcRenderer.invoke(IPC_CHANNELS.doubaoRestart, port),
   applyTheme: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.skinApply, id),
   restoreOfficial: () => ipcRenderer.invoke(IPC_CHANNELS.skinRestore),
+  getSkinPersistence: () => ipcRenderer.invoke(IPC_CHANNELS.skinPersistenceGet),
+  setSkinPersistence: (enabled: boolean) => ipcRenderer.invoke(IPC_CHANNELS.skinPersistenceSet, enabled),
+  getSkinAutomation: () => ipcRenderer.invoke(IPC_CHANNELS.skinAutomationGet),
+  setSkinAutomation: (settings: { confirmBeforeRestart?: boolean; temporarilyDisabled?: boolean }) => ipcRenderer.invoke(IPC_CHANNELS.skinAutomationSet, settings),
   chooseDoubaoExecutable: () => ipcRenderer.invoke(IPC_CHANNELS.doubaoChooseExecutable)
 });
 

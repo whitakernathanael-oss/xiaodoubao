@@ -13,6 +13,7 @@ type SpawnDoubao = (
   options: { detached: true; stdio: "ignore"; windowsHide: true }
 ) => { pid?: number; unref(): void };
 type RunningProbe = () => Promise<boolean>;
+type ProcessRunner = (file: string, args: string[], options: { windowsHide: true }) => Promise<{ stdout: string; stderr: string }>;
 
 export type DoubaoPortStatus =
   | { kind: "connected"; targets: CdpTarget[] }
@@ -95,4 +96,18 @@ export async function closeDoubaoGracefully(
 ): Promise<boolean> {
   if (!confirmed) throw new Error("Explicit restart confirmation is required");
   return !await isRunning();
+}
+
+export async function closeDoubaoForRestart(
+  runProcess: ProcessRunner = (file, args, options) => promisify(execFile)(file, args, options)
+): Promise<boolean> {
+  try {
+    const listed = await runProcess("tasklist.exe", ["/FI", "IMAGENAME eq Doubao.exe", "/FO", "CSV", "/NH"], { windowsHide: true });
+    const match = listed.stdout.match(/"Doubao\.exe","(\d+)"/i);
+    if (!match) return true;
+    await runProcess("taskkill.exe", ["/PID", match[1], "/T", "/F"], { windowsHide: true });
+    return true;
+  } catch {
+    return false;
+  }
 }

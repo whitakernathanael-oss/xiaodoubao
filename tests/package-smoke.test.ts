@@ -49,6 +49,18 @@ describe("Windows package metadata", () => {
       .toBeLessThan(source.indexOf("app.whenReady()"));
   });
 
+  it("supports a windowless guardian startup mode", async () => {
+    const source = await readFile(path.join(process.cwd(), "src", "main.ts"), "utf8");
+    expect(source).toContain("--skin-guardian");
+    expect(source).toContain("startGuardian");
+  });
+
+  it("does not keep a first-run window hidden before a skin is active", async () => {
+    const source = await readFile(path.join(process.cwd(), "src", "main", "app-services.ts"), "utf8");
+    expect(source).toContain("let persistenceActive = Boolean(await skinState.load())");
+    expect(source).toContain("settings.skinPersistenceEnabled && persistenceActive");
+  });
+
   it("keeps all three editor columns usable on high-DPI displays", async () => {
     const mainSource = await readFile(path.join(process.cwd(), "src", "main.ts"), "utf8");
     const styles = await readFile(path.join(process.cwd(), "src", "renderer", "styles.css"), "utf8");

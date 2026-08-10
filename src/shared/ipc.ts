@@ -15,7 +15,11 @@ export const IPC_CHANNELS = {
   doubaoRestart: "doubao:restart",
   doubaoChooseExecutable: "doubao:choose-executable",
   skinApply: "skin:apply",
-  skinRestore: "skin:restore"
+  skinRestore: "skin:restore",
+  skinPersistenceGet: "skin:persistence:get",
+  skinPersistenceSet: "skin:persistence:set",
+  skinAutomationGet: "skin:automation:get",
+  skinAutomationSet: "skin:automation:set"
 } as const;
 
 export interface WallpaperSelection {
@@ -45,6 +49,10 @@ export interface DoubaoSkinApi {
   confirmRestart(port?: number): Promise<unknown>;
   applyTheme(id: string): Promise<unknown>;
   restoreOfficial(): Promise<void>;
+  getSkinPersistence(): Promise<{ enabled: boolean }>;
+  setSkinPersistence(enabled: boolean): Promise<{ enabled: boolean }>;
+  getSkinAutomation(): Promise<{ confirmBeforeRestart: boolean; temporarilyDisabled: boolean }>;
+  setSkinAutomation(settings: { confirmBeforeRestart?: boolean; temporarilyDisabled?: boolean }): Promise<{ confirmBeforeRestart: boolean; temporarilyDisabled: boolean }>;
   chooseDoubaoExecutable(): Promise<string | undefined>;
 }
 
