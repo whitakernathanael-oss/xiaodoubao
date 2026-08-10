@@ -1,6 +1,6 @@
 import { app, dialog } from "electron";
 import { randomUUID } from "node:crypto";
-import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { IpcServices } from "./ipc-handlers";
 import { AdapterStore } from "./adapter-store";
@@ -17,7 +17,9 @@ import { resolveBundledPaths, resolveDataPaths } from "./paths";
 import { ThemeArchive } from "./theme-archive";
 import { ThemeStore } from "./theme-store";
 import { SkinWorkflow } from "./workflow";
-import type { SaveThemeInput, WallpaperSelection } from "../shared/ipc";
+import { inspectWallpaper, validateWallpaperByteLength } from "./wallpaper-validation";
+import type { SaveThemeInput } from "../shared/ipc";
+import { detectWallpaperFormat, normalizeWallpaperName } from "../shared/wallpaper-format";
 
 interface AppSettings {
   doubaoExecutable?: string;
@@ -182,7 +184,17 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
       });
       if (result.canceled) return undefined;
       const file = result.filePaths[0];
-      return { name: path.basename(file), mime: wallpaperMime(file), bytes: await readFile(file) };
+      validateWallpaperByteLength((await stat(file)).size);
+      const bytes = await readFile(file);
+      const format = detectWallpaperFormat(bytes);
+      if (!format) throw new Error("选择的文件不是受支持的图片");
+      const name = normalizeWallpaperName(path.basename(file), format);
+      inspectWallpaper(name, bytes);
+      return {
+        name,
+        mime: format.mime,
+        bytes
+      };
     },
     getStatus: async () => {
       if (workflow.hasActiveSessions()) return workflow.getStatus();

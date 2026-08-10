@@ -84,6 +84,18 @@ describe("theme validation and storage", () => {
     expect((await store.list()).find((item) => item.id === theme.id)?.readOnly).toBe(false);
   });
 
+  it("lists the actual palette colours used by a theme card", async () => {
+    const store = new ThemeStore(userRoot, builtInRoot);
+    const theme = userTheme();
+    theme.palette = { ...theme.palette, surface: "#f1e2d3", accent: "#456789" };
+    await store.save(theme, { name: "wallpaper.png", bytes: PNG_BYTES });
+
+    const summary = (await store.list()).find((item) => item.id === theme.id)!;
+
+    expect(summary.surfaceColor).toBe("#f1e2d3");
+    expect(summary.accentColor).toBe("#456789");
+  });
+
   it("keeps built-in themes read-only and duplicates them as user themes", async () => {
     const store = new ThemeStore(userRoot, builtInRoot);
 

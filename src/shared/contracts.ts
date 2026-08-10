@@ -2,8 +2,9 @@ import { DEFAULT_THEME } from "./defaults";
 
 export const THEME_ID_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
-export const MAX_WALLPAPER_BYTES = 25 * 1024 * 1024;
-export const MAX_WALLPAPER_EDGE = 4096;
+export const MAX_WALLPAPER_BYTES = 50 * 1024 * 1024;
+export const MAX_WALLPAPER_EDGE = 8192;
+export const MAX_WALLPAPER_PIXELS = 36 * 1024 * 1024;
 export const WALLPAPER_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 
 export type WallpaperFit = "cover" | "contain";
@@ -93,6 +94,8 @@ export interface ThemeSummary {
   name: string;
   author: string;
   wallpaperFile: string;
+  surfaceColor: string;
+  accentColor: string;
   readOnly: boolean;
 }
 

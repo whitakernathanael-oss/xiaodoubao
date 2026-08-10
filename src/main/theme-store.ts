@@ -2,9 +2,8 @@ import { randomUUID } from "node:crypto";
 import { access, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { validateExtraCss } from "./css-validator";
+import { inspectWallpaper } from "./wallpaper-validation";
 import {
-  MAX_WALLPAPER_BYTES,
-  MAX_WALLPAPER_EDGE,
   validateTheme,
   type Theme,
   type ThemeSummary
@@ -28,66 +27,15 @@ function summary(theme: Theme, readOnly: boolean): ThemeSummary {
     name: theme.name,
     author: theme.author,
     wallpaperFile: theme.wallpaper.file,
+    surfaceColor: theme.palette.surface,
+    accentColor: theme.palette.accent,
     readOnly
   };
 }
 
-function u16le(bytes: Uint8Array, offset: number): number {
-  return bytes[offset] | (bytes[offset + 1] << 8);
-}
-
-function u24le(bytes: Uint8Array, offset: number): number {
-  return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16);
-}
-
-function imageSize(bytes: Uint8Array, extension: string): { width: number; height: number } | undefined {
-  if (extension === ".png" && bytes.length >= 24 && bytes.slice(0, 8).every((value, index) => value === [137, 80, 78, 71, 13, 10, 26, 10][index])) {
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    return { width: view.getUint32(16), height: view.getUint32(20) };
-  }
-  if ((extension === ".jpg" || extension === ".jpeg") && bytes[0] === 0xff && bytes[1] === 0xd8) {
-    for (let offset = 2; offset + 9 < bytes.length;) {
-      if (bytes[offset] !== 0xff) { offset += 1; continue; }
-      const marker = bytes[offset + 1];
-      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
-        return { height: (bytes[offset + 5] << 8) | bytes[offset + 6], width: (bytes[offset + 7] << 8) | bytes[offset + 8] };
-      }
-      if (marker === 0xd8 || marker === 0xd9) { offset += 2; continue; }
-      const length = (bytes[offset + 2] << 8) | bytes[offset + 3];
-      if (length < 2) return undefined;
-      offset += length + 2;
-    }
-  }
-  const ascii = (offset: number, length: number) => String.fromCharCode(...bytes.slice(offset, offset + length));
-  if (extension === ".webp" && bytes.length >= 30 && ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") {
-    const kind = ascii(12, 4);
-    if (kind === "VP8X") return { width: u24le(bytes, 24) + 1, height: u24le(bytes, 27) + 1 };
-    if (kind === "VP8L" && bytes[20] === 0x2f) {
-      return {
-        width: 1 + bytes[21] + ((bytes[22] & 0x3f) << 8),
-        height: 1 + (bytes[23] >> 2) + (bytes[24] << 6)
-      };
-    }
-    if (kind === "VP8 " && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) {
-      return { width: u16le(bytes, 26) & 0x3fff, height: u16le(bytes, 28) & 0x3fff };
-    }
-  }
-  return undefined;
-}
-
 function validateAsset(theme: Theme, asset: ThemeAsset): void {
   if (asset.name !== theme.wallpaper.file) throw new Error("Wallpaper asset name does not match theme");
-  if (asset.bytes.byteLength === 0 || asset.bytes.byteLength > MAX_WALLPAPER_BYTES) {
-    throw new Error("Wallpaper image exceeds the size limit");
-  }
-  const extension = asset.name.slice(asset.name.lastIndexOf(".")).toLowerCase();
-  const dimensions = imageSize(asset.bytes, extension);
-  if (!dimensions || dimensions.width < 1 || dimensions.height < 1) {
-    throw new Error("Wallpaper image header is invalid");
-  }
-  if (dimensions.width > MAX_WALLPAPER_EDGE || dimensions.height > MAX_WALLPAPER_EDGE) {
-    throw new Error("Wallpaper image dimensions exceed the limit");
-  }
+  inspectWallpaper(asset.name, asset.bytes);
 }
 
 async function exists(target: string): Promise<boolean> {
