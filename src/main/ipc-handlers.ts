@@ -6,6 +6,7 @@ type MaybePromise<T> = T | Promise<T>;
 export interface IpcServices {
   listThemes(): MaybePromise<ThemeSummary[]>;
   loadTheme(id: string): MaybePromise<Theme>;
+  loadWallpaper(id: string): MaybePromise<WallpaperSelection>;
   saveTheme(input: SaveThemeInput): MaybePromise<ThemeSummary>;
   deleteTheme(id: string): MaybePromise<void>;
   duplicateTheme(id: string): MaybePromise<ThemeSummary>;
@@ -75,6 +76,7 @@ export function registerIpcHandlers(services: IpcServices, ipcMain: IpcMainLike)
   const handlers: Record<string, (event: unknown, ...args: unknown[]) => unknown> = {
     [IPC_CHANNELS.themeList]: async () => services.listThemes(),
     [IPC_CHANNELS.themeLoad]: async (_event, id) => services.loadTheme(themeId(id)),
+    [IPC_CHANNELS.wallpaperLoad]: async (_event, id) => services.loadWallpaper(themeId(id)),
     [IPC_CHANNELS.themeSave]: async (_event, input) => services.saveTheme(saveInput(input)),
     [IPC_CHANNELS.themeDelete]: async (_event, id) => services.deleteTheme(themeId(id)),
     [IPC_CHANNELS.themeDuplicate]: async (_event, id) => services.duplicateTheme(themeId(id)),

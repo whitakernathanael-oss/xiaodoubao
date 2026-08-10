@@ -4,7 +4,7 @@ import { IPC_CHANNELS } from "../src/shared/ipc";
 
 function services(): IpcServices {
   return {
-    listThemes: vi.fn(), loadTheme: vi.fn(), saveTheme: vi.fn(), deleteTheme: vi.fn(),
+    listThemes: vi.fn(), loadTheme: vi.fn(), loadWallpaper: vi.fn(), saveTheme: vi.fn(), deleteTheme: vi.fn(),
     duplicateTheme: vi.fn(), importTheme: vi.fn(), exportTheme: vi.fn(), chooseWallpaper: vi.fn(),
     getStatus: vi.fn(), startDoubao: vi.fn(), confirmRestart: vi.fn(), applyTheme: vi.fn(),
     restoreOfficial: vi.fn(), chooseDoubaoExecutable: vi.fn()
@@ -17,7 +17,7 @@ describe("bounded IPC", () => {
       "adapter:status", "doubao:choose-executable", "doubao:restart",
       "doubao:start", "skin:apply", "skin:restore",
       "theme:delete", "theme:duplicate", "theme:export", "theme:import",
-      "theme:list", "theme:load", "theme:save", "wallpaper:choose"
+      "theme:list", "theme:load", "theme:save", "wallpaper:choose", "wallpaper:load"
     ].sort());
   });
 

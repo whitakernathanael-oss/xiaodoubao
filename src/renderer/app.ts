@@ -93,6 +93,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   let wallpaperUrl: string | undefined;
   let wallpaperRequest = 0;
   let wallpaperQueue = Promise.resolve();
+  let themeLoadRequest = 0;
 
   const setStatus = (value: unknown) => { status.textContent = statusLabel(value); };
 
@@ -181,11 +182,16 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   };
 
   const loadTheme = async (id: string): Promise<void> => {
+    const request = ++themeLoadRequest;
+    ++wallpaperRequest;
+    const [theme, wallpaper] = await Promise.all([api.loadTheme(id), api.loadWallpaper(id)]);
+    if (request !== themeLoadRequest) return;
     selectedSummary = summaries.find((item) => item.id === id);
-    state = createEditorState(await api.loadTheme(id));
+    state = createEditorState(theme);
     pendingWallpaper = undefined;
     if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
-    wallpaperUrl = undefined;
+    const copy = Uint8Array.from(wallpaper.bytes);
+    wallpaperUrl = URL.createObjectURL(new Blob([copy], { type: wallpaper.mime }));
     render();
   };
 

@@ -56,18 +56,18 @@ class SettingsStore {
   }
 }
 
-function wallpaperMime(file: string): WallpaperSelection["mime"] {
-  const extension = path.extname(file).toLowerCase();
-  if (extension === ".png") return "image/png";
-  if (extension === ".webp") return "image/webp";
-  return "image/jpeg";
-}
-
 async function existingExecutable(configured?: string): Promise<string | undefined> {
   if (configured) {
     try { await access(configured); return configured; } catch { /* Fall back to standard locations. */ }
   }
   return findDoubaoExecutable();
+}
+
+function storedWallpaperMime(file: string): "image/png" | "image/jpeg" | "image/webp" {
+  const extension = path.extname(file).toLowerCase();
+  if (extension === ".png") return "image/png";
+  if (extension === ".webp") return "image/webp";
+  return "image/jpeg";
 }
 
 async function waitForPort(port: number, adapter: Awaited<ReturnType<AdapterStore["load"]>>): Promise<boolean> {
@@ -144,9 +144,15 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     return themeStore.save(input.theme, asset, input.extraCss ?? previousCss);
   };
 
+  const loadWallpaper = async (id: string) => {
+    const asset = (await themeStore.readBundle(id)).asset;
+    return { name: asset.name, mime: storedWallpaperMime(asset.name), bytes: asset.bytes };
+  };
+
   const services: IpcServices = {
     listThemes: () => themeStore.list(),
     loadTheme: (id) => themeStore.load(id),
+    loadWallpaper,
     saveTheme,
     deleteTheme: (id) => themeStore.remove(id),
     duplicateTheme: (id) => themeStore.duplicate(id),

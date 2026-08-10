@@ -4,6 +4,7 @@ import { IPC_CHANNELS, type DoubaoSkinApi, type SaveThemeInput } from "./shared/
 const api: DoubaoSkinApi = Object.freeze({
   listThemes: () => ipcRenderer.invoke(IPC_CHANNELS.themeList),
   loadTheme: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.themeLoad, id),
+  loadWallpaper: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.wallpaperLoad, id),
   saveTheme: (input: SaveThemeInput) => ipcRenderer.invoke(IPC_CHANNELS.themeSave, input),
   deleteTheme: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.themeDelete, id),
   duplicateTheme: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.themeDuplicate, id),

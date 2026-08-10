@@ -21,6 +21,7 @@ function api(): DoubaoSkinApi {
       wallpaperFile: input.theme.wallpaper.file, readOnly: false,
       surfaceColor: input.theme.palette.surface, accentColor: input.theme.palette.accent
     })),
+    loadWallpaper: vi.fn(async () => ({ name: "wallpaper.png", mime: "image/png" as const, bytes: Uint8Array.of(137, 80, 78, 71) })),
     deleteTheme: vi.fn(async () => undefined), duplicateTheme: vi.fn(),
     importTheme: vi.fn(), exportTheme: vi.fn(async () => true), chooseWallpaper: vi.fn(),
     getStatus: vi.fn(async () => ({ kind: "not-running" })), startDoubao: vi.fn(),
@@ -115,6 +116,93 @@ describe("single-window editor", () => {
     expect(root.querySelector("[data-action='undo']")).toBeNull();
     expect(root.querySelector("[data-action='reset']")).toBeNull();
     expect(root.querySelector("[data-role='region-controls']")!.textContent).toContain("选择静态壁纸");
+  });
+
+  it("reloads a saved wallpaper every time its theme is selected", async () => {
+    const savedTheme = {
+      ...structuredClone(DEFAULT_THEME),
+      id: "wallpaper-002",
+      name: "002",
+      wallpaper: { ...DEFAULT_THEME.wallpaper, file: "002.png" }
+    };
+    const loadWallpaper = vi.fn(async () => ({
+      name: "002.png" as const, mime: "image/png" as const, bytes: Uint8Array.of(137, 80, 78, 71)
+    }));
+    const fake = api();
+    vi.mocked(fake.loadWallpaper).mockImplementation(loadWallpaper);
+    vi.mocked(fake.listThemes).mockResolvedValue([
+      {
+        id: DEFAULT_THEME.id, name: DEFAULT_THEME.name, author: DEFAULT_THEME.author,
+        wallpaperFile: DEFAULT_THEME.wallpaper.file, readOnly: true, surfaceColor: "#f1e2d3", accentColor: "#456789"
+      },
+      {
+        id: savedTheme.id, name: savedTheme.name, author: savedTheme.author,
+        wallpaperFile: savedTheme.wallpaper.file, readOnly: false, surfaceColor: "#eef3f8", accentColor: "#276fbe"
+      }
+    ]);
+    vi.mocked(fake.loadTheme).mockImplementation(async (id) => id === savedTheme.id ? structuredClone(savedTheme) : structuredClone(DEFAULT_THEME));
+    vi.mocked(URL.createObjectURL).mockImplementation((blob) => `blob:${(blob as Blob).type}`);
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+    loadWallpaper.mockClear();
+
+    const savedCard = root.querySelector<HTMLButtonElement>("[data-theme-id='wallpaper-002']")!;
+    savedCard.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    root.querySelector<HTMLButtonElement>("[data-theme-id='clean-light']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    root.querySelector<HTMLButtonElement>("[data-theme-id='wallpaper-002']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(loadWallpaper).toHaveBeenCalledTimes(3);
+    expect(root.querySelector<HTMLElement>("[data-role='preview']")!.style.getPropertyValue("--p-wallpaper"))
+      .toContain("blob:image/png");
+  });
+
+  it("keeps the selected theme when an older wallpaper upload finishes later", async () => {
+    const otherTheme = { ...structuredClone(DEFAULT_THEME), id: "other", name: "其他主题" };
+    const delayedPalette = deferred<Awaited<ReturnType<typeof extractPalette>>>();
+    const fake = api();
+    vi.mocked(fake.listThemes).mockResolvedValue([
+      {
+        id: DEFAULT_THEME.id, name: DEFAULT_THEME.name, author: DEFAULT_THEME.author,
+        wallpaperFile: DEFAULT_THEME.wallpaper.file, readOnly: true, surfaceColor: "#f1e2d3", accentColor: "#456789"
+      },
+      {
+        id: otherTheme.id, name: otherTheme.name, author: otherTheme.author,
+        wallpaperFile: otherTheme.wallpaper.file, readOnly: false, surfaceColor: "#eef3f8", accentColor: "#276fbe"
+      }
+    ]);
+    vi.mocked(fake.loadTheme).mockImplementation(async (id) => id === otherTheme.id ? structuredClone(otherTheme) : structuredClone(DEFAULT_THEME));
+    vi.mocked(fake.loadWallpaper).mockResolvedValue({
+      name: "saved.png", mime: "image/png", bytes: Uint8Array.of(137, 80, 78, 71)
+    });
+    vi.mocked(fake.chooseWallpaper).mockResolvedValue({
+      name: "upload.png", mime: "image/png", bytes: Uint8Array.of(1)
+    });
+    vi.mocked(extractPalette).mockImplementation(() => delayedPalette.promise);
+    vi.mocked(URL.createObjectURL)
+      .mockReturnValueOnce("blob:initial")
+      .mockReturnValueOnce("blob:other")
+      .mockReturnValueOnce("blob:upload");
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    root.querySelector<HTMLButtonElement>(".wallpaper-picker")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    root.querySelector<HTMLButtonElement>("[data-theme-id='other']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    delayedPalette.resolve({
+      seedColor: "#2873c8", primary: "#276fbe", primaryHover: "#205a9a", secondary: "#6786a5",
+      surface: "#eef3f8", surfaceVariant: "#d7e2ec", background: "#f7fafc", border: "#94abc0",
+      text: "#161920", muted: "#575f68", ink: "#161920", mutedInk: "#575f68", accent: "#276fbe",
+      route: "light", textContrast: 12.4, neutralFallback: false, competitionDetected: false
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.saveTheme).not.toHaveBeenCalled();
+    expect(root.querySelector<HTMLElement>("[data-role='preview']")!.style.getPropertyValue("--p-wallpaper"))
+      .toContain("blob:other");
   });
 
   it("automatically saves a new image-derived theme from one seed", async () => {

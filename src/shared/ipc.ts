@@ -3,6 +3,7 @@ import type { Theme, ThemeSummary } from "./contracts";
 export const IPC_CHANNELS = {
   themeList: "theme:list",
   themeLoad: "theme:load",
+  wallpaperLoad: "wallpaper:load",
   themeSave: "theme:save",
   themeDelete: "theme:delete",
   themeDuplicate: "theme:duplicate",
@@ -32,6 +33,7 @@ export interface SaveThemeInput {
 export interface DoubaoSkinApi {
   listThemes(): Promise<ThemeSummary[]>;
   loadTheme(id: string): Promise<Theme>;
+  loadWallpaper(id: string): Promise<WallpaperSelection>;
   saveTheme(input: SaveThemeInput): Promise<ThemeSummary>;
   deleteTheme(id: string): Promise<void>;
   duplicateTheme(id: string): Promise<ThemeSummary>;
