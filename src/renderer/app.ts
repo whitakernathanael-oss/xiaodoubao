@@ -3,6 +3,7 @@ import { extractPalette } from "./palette";
 import { createEditorState, updateField, type EditorState } from "./editor-state";
 import { renderPreview, type PreviewPage } from "./preview";
 import type { Theme, ThemeSummary } from "../shared/contracts";
+import { DEFAULT_THEME } from "../shared/defaults";
 import type { DoubaoSkinApi, WallpaperSelection } from "../shared/ipc";
 import { applyDerivedPalette } from "../shared/theme-coloring";
 
@@ -28,8 +29,23 @@ function valueAt(theme: Theme, path: string[]): unknown {
   return value;
 }
 
+function wallpaperStem(name: string): string {
+  return name.replace(/\.[^.]+$/, "").trim() || name;
+}
+
+function wallpaperThemeId(name: string, items: readonly ThemeSummary[]): string {
+  const slug = wallpaperStem(name).toLowerCase().normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "theme";
+  const base = `wallpaper-${slug}`;
+  let id = base;
+  for (let suffix = 2; items.some((item) => item.id === id); suffix += 1) id = `${base}-${suffix}`;
+  return id;
+}
+
 function statusLabel(status: unknown): string {
-  const kind = status && typeof status === "object" ? (status as { kind?: string }).kind : undefined;
+  const details = status && typeof status === "object" ? status as { kind?: string; message?: string } : undefined;
+  if (details?.message) return details.message;
+  const kind = details?.kind;
   return ({
     "not-running": "豆包未启动", "restart-required": "需要确认重启", connecting: "正在连接",
     applied: "已应用", partial: "部分兼容", incompatible: "当前版本不兼容", error: "操作失败"
@@ -75,6 +91,8 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   let previewPage: PreviewPage = "chat";
   let pendingWallpaper: WallpaperSelection | undefined;
   let wallpaperUrl: string | undefined;
+  let wallpaperRequest = 0;
+  let wallpaperQueue = Promise.resolve();
 
   const setStatus = (value: unknown) => { status.textContent = statusLabel(value); };
 
@@ -121,7 +139,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     choose.className = "wallpaper-picker";
     choose.innerHTML = `<span>选择静态壁纸</span><small></small>`;
     choose.querySelector("small")!.textContent = state.theme.wallpaper.file;
-    choose.addEventListener("click", () => void chooseWallpaper());
+    choose.addEventListener("click", () => void chooseWallpaper().catch((error) => setStatus({ kind: "error", error })));
     controls.append(choose);
     const fitLabel = document.createElement("label");
     fitLabel.className = "control-row";
@@ -180,30 +198,62 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   const chooseWallpaper = async (): Promise<void> => {
     const selection = await api.chooseWallpaper();
     if (!selection) return;
-    await ensureEditable();
-    pendingWallpaper = selection;
-    const copy = Uint8Array.from(selection.bytes);
-    const derived = await extractPalette(copy.buffer, selection.mime);
-    state = {
-      ...state,
-      theme: applyDerivedPalette(state.theme, derived),
-      dirty: true
+    const request = ++wallpaperRequest;
+    const process = async (): Promise<void> => {
+      if (request !== wallpaperRequest) return;
+      const matchingTheme = summaries.find((item) => !item.readOnly && item.wallpaperFile === selection.name);
+      const theme = matchingTheme ? await api.loadTheme(matchingTheme.id) : structuredClone(DEFAULT_THEME);
+      if (request !== wallpaperRequest) return;
+      if (!matchingTheme) {
+        theme.id = wallpaperThemeId(selection.name, summaries);
+        theme.name = wallpaperStem(selection.name);
+      }
+      const copy = Uint8Array.from(selection.bytes);
+      const derived = await extractPalette(copy.buffer, selection.mime);
+      if (request !== wallpaperRequest) return;
+      let nextState = createEditorState(theme);
+      nextState = {
+        ...nextState,
+        theme: applyDerivedPalette(nextState.theme, derived),
+        dirty: true
+      };
+      nextState = updateField(nextState, ["wallpaper", "file"], selection.name);
+      selectedSummary = matchingTheme;
+      state = nextState;
+      pendingWallpaper = selection;
+      if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
+      wallpaperUrl = URL.createObjectURL(new Blob([copy], { type: selection.mime }));
+      render();
+      try {
+        await saveDraft(false, `已自动保存：${nextState.theme.name}`, {
+          theme: nextState.theme, wallpaper: selection, request
+        });
+      } catch (error) {
+        if (request === wallpaperRequest) throw error;
+      }
     };
-    state = updateField(state, ["wallpaper", "file"], selection.name);
-    if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
-    wallpaperUrl = URL.createObjectURL(new Blob([copy], { type: selection.mime }));
-    render();
+    const task = wallpaperQueue.then(process, process);
+    wallpaperQueue = task.catch(() => undefined);
+    await task;
   };
 
-  const saveDraft = async (): Promise<ThemeSummary> => {
-    await ensureEditable();
-    const saved = await api.saveTheme({ theme: state.theme, wallpaper: pendingWallpaper });
-    summaries = await api.listThemes();
+  const saveDraft = async (
+    makeEditable = true,
+    message = "主题已保存",
+    snapshot?: { theme: Theme; wallpaper: WallpaperSelection; request: number }
+  ): Promise<ThemeSummary> => {
+    if (makeEditable) await ensureEditable();
+    const theme = snapshot?.theme ?? state.theme;
+    const wallpaper = snapshot?.wallpaper ?? pendingWallpaper;
+    const saved = await api.saveTheme({ theme, wallpaper });
+    const nextSummaries = await api.listThemes();
+    summaries = nextSummaries;
+    if (snapshot && snapshot.request !== wallpaperRequest) return saved;
     selectedSummary = summaries.find((item) => item.id === saved.id) ?? saved;
-    state = createEditorState(state.theme);
+    state = createEditorState(theme);
     pendingWallpaper = undefined;
     render();
-    setStatus({ kind: "applied", message: "主题已保存" });
+    setStatus({ kind: "applied", message });
     return saved;
   };
 

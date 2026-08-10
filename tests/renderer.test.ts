@@ -4,6 +4,7 @@ vi.mock("../src/renderer/palette", () => ({ extractPalette: vi.fn() }));
 
 import { mountApp } from "../src/renderer/app";
 import { extractPalette } from "../src/renderer/palette";
+import type { ThemeSummary } from "../src/shared/contracts";
 import type { DoubaoSkinApi } from "../src/shared/ipc";
 import { DEFAULT_THEME } from "../src/shared/defaults";
 
@@ -27,6 +28,11 @@ function api(): DoubaoSkinApi {
     restoreOfficial: vi.fn(async () => undefined),
     chooseDoubaoExecutable: vi.fn()
   };
+}
+
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void;
+  return { promise: new Promise<T>((done) => { resolve = done; }), resolve };
 }
 
 describe("single-window editor", () => {
@@ -111,7 +117,7 @@ describe("single-window editor", () => {
     expect(root.querySelector("[data-role='region-controls']")!.textContent).toContain("选择静态壁纸");
   });
 
-  it("saves image-derived tonal roles from one seed", async () => {
+  it("automatically saves a new image-derived theme from one seed", async () => {
     const fake = api();
     vi.mocked(fake.chooseWallpaper).mockResolvedValue({
       name: "photo.png",
@@ -123,15 +129,189 @@ describe("single-window editor", () => {
 
     root.querySelector<HTMLButtonElement>(".wallpaper-picker")!.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    root.querySelector<HTMLButtonElement>("[data-action='save']")!.click();
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
     const saved = vi.mocked(fake.saveTheme).mock.calls.at(-1)?.[0].theme;
+    expect(fake.saveTheme).toHaveBeenCalledOnce();
+    expect(saved?.id).toBe("wallpaper-photo");
+    expect(saved?.name).toBe("photo");
+    expect(saved?.wallpaper.file).toBe("photo.png");
     expect(saved?.palette.accent).toBe("#276fbe");
     expect(saved?.regions.sidebar.selectedColor).toBe("#6786a5");
     expect(saved?.regions.buttons.primaryColor).toBe("#276fbe");
     expect(saved?.regions.chat.backgroundColor).toBe("#f7fafc");
     expect(saved?.regions.sidebar.textColor).toBe("#161920");
     expect(saved?.regions.chat.textColor).toBe("#161920");
+    expect(fake.applyTheme).not.toHaveBeenCalled();
+  });
+
+  it("replaces the existing user theme for the same wallpaper filename", async () => {
+    const fake = api();
+    const existing = {
+      ...structuredClone(DEFAULT_THEME),
+      id: "wallpaper-photo",
+      name: "我调过的照片主题",
+      wallpaper: { ...DEFAULT_THEME.wallpaper, file: "photo.png", positionX: 68 }
+    };
+    vi.mocked(fake.listThemes).mockResolvedValue([
+      {
+        id: DEFAULT_THEME.id, name: DEFAULT_THEME.name, author: DEFAULT_THEME.author,
+        wallpaperFile: DEFAULT_THEME.wallpaper.file, readOnly: true, surfaceColor: "#f1e2d3", accentColor: "#456789"
+      },
+      {
+        id: existing.id, name: existing.name, author: existing.author,
+        wallpaperFile: existing.wallpaper.file, readOnly: false, surfaceColor: "#f1e2d3", accentColor: "#456789"
+      }
+    ]);
+    vi.mocked(fake.loadTheme).mockImplementation(async (id) => id === existing.id ? structuredClone(existing) : structuredClone(DEFAULT_THEME));
+    vi.mocked(fake.chooseWallpaper).mockResolvedValue({
+      name: "photo.png", mime: "image/png", bytes: Uint8Array.of(137, 80, 78, 71)
+    });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    root.querySelector<HTMLButtonElement>(".wallpaper-picker")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.loadTheme).toHaveBeenCalledWith(existing.id);
+    const saved = vi.mocked(fake.saveTheme).mock.calls.at(-1)?.[0].theme;
+    expect(saved?.id).toBe(existing.id);
+    expect(saved?.name).toBe(existing.name);
+    expect(saved?.wallpaper.positionX).toBe(68);
+  });
+
+  it("adds a suffix when a different wallpaper already uses the generated ID", async () => {
+    const fake = api();
+    vi.mocked(fake.listThemes).mockResolvedValue([
+      {
+        id: DEFAULT_THEME.id, name: DEFAULT_THEME.name, author: DEFAULT_THEME.author,
+        wallpaperFile: DEFAULT_THEME.wallpaper.file, readOnly: true, surfaceColor: "#f1e2d3", accentColor: "#456789"
+      },
+      {
+        id: "wallpaper-photo", name: "另一张照片", author: DEFAULT_THEME.author,
+        wallpaperFile: "other.png", readOnly: false, surfaceColor: "#f1e2d3", accentColor: "#456789"
+      }
+    ]);
+    vi.mocked(fake.chooseWallpaper).mockResolvedValue({
+      name: "photo.png", mime: "image/png", bytes: Uint8Array.of(137, 80, 78, 71)
+    });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    root.querySelector<HTMLButtonElement>(".wallpaper-picker")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(vi.mocked(fake.saveTheme).mock.calls.at(-1)?.[0].theme.id).toBe("wallpaper-photo-2");
+  });
+
+  it("keeps the wallpaper preview and allows a manual retry after autosave fails", async () => {
+    const fake = api();
+    vi.mocked(fake.chooseWallpaper).mockResolvedValue({
+      name: "photo.png", mime: "image/png", bytes: Uint8Array.of(137, 80, 78, 71)
+    });
+    vi.mocked(fake.saveTheme).mockRejectedValueOnce(new Error("disk failed"));
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    root.querySelector<HTMLButtonElement>(".wallpaper-picker")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(root.querySelector(".preview__wallpaper")).not.toBeNull();
+    expect(root.querySelector("[data-role='status']")?.textContent).toBe("操作失败");
+
+    root.querySelector<HTMLButtonElement>("[data-action='save']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fake.saveTheme).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the most recently selected wallpaper when an earlier extraction finishes late", async () => {
+    const fake = api();
+    const firstPalette = deferred<Awaited<ReturnType<typeof extractPalette>>>();
+    const derived = {
+      seedColor: "#2873c8", primary: "#276fbe", primaryHover: "#205a9a", secondary: "#6786a5",
+      surface: "#eef3f8", surfaceVariant: "#d7e2ec", background: "#f7fafc", border: "#94abc0",
+      text: "#161920", muted: "#575f68", ink: "#161920", mutedInk: "#575f68", accent: "#276fbe",
+      route: "light" as const, textContrast: 12.4, neutralFallback: false, competitionDetected: false
+    };
+    vi.mocked(extractPalette).mockImplementation((bytes) =>
+      new Uint8Array(bytes)[0] === 1 ? firstPalette.promise : Promise.resolve(derived)
+    );
+    vi.mocked(fake.chooseWallpaper)
+      .mockResolvedValueOnce({ name: "first.png", mime: "image/png", bytes: Uint8Array.of(1) })
+      .mockResolvedValueOnce({ name: "second.png", mime: "image/png", bytes: Uint8Array.of(2) });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    const picker = root.querySelector<HTMLButtonElement>(".wallpaper-picker")!;
+    picker.click();
+    picker.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    firstPalette.resolve(derived);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.saveTheme).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fake.saveTheme).mock.calls[0][0].theme.wallpaper.file).toBe("second.png");
+  });
+
+  it("serializes uploads when an earlier autosave is still writing", async () => {
+    const fake = api();
+    const firstSave = deferred<ThemeSummary>();
+    vi.mocked(fake.saveTheme).mockImplementationOnce(() => firstSave.promise);
+    vi.mocked(fake.chooseWallpaper)
+      .mockResolvedValueOnce({ name: "first.png", mime: "image/png", bytes: Uint8Array.of(1) })
+      .mockResolvedValueOnce({ name: "second.png", mime: "image/png", bytes: Uint8Array.of(2) });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    const picker = root.querySelector<HTMLButtonElement>(".wallpaper-picker")!;
+    picker.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fake.saveTheme).toHaveBeenCalledTimes(1);
+
+    picker.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fake.saveTheme).toHaveBeenCalledTimes(1);
+
+    firstSave.resolve({
+      id: "wallpaper-first", name: "first", author: DEFAULT_THEME.author,
+      wallpaperFile: "first.png", readOnly: false, surfaceColor: "#eef3f8", accentColor: "#276fbe"
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.saveTheme).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(fake.saveTheme).mock.calls[1][0].theme.wallpaper.file).toBe("second.png");
+  });
+
+  it("uses the refreshed theme list to suffix a queued colliding ID", async () => {
+    const fake = api();
+    const firstSave = deferred<ThemeSummary>();
+    const builtIn = {
+      id: DEFAULT_THEME.id, name: DEFAULT_THEME.name, author: DEFAULT_THEME.author,
+      wallpaperFile: DEFAULT_THEME.wallpaper.file, readOnly: true, surfaceColor: "#f1e2d3", accentColor: "#456789"
+    };
+    const firstTheme = {
+      id: "wallpaper-photo", name: "photo", author: DEFAULT_THEME.author,
+      wallpaperFile: "photo.png", readOnly: false, surfaceColor: "#eef3f8", accentColor: "#276fbe"
+    };
+    vi.mocked(fake.listThemes)
+      .mockResolvedValueOnce([builtIn])
+      .mockResolvedValueOnce([builtIn, firstTheme])
+      .mockResolvedValue([builtIn, firstTheme]);
+    vi.mocked(fake.saveTheme).mockImplementationOnce(() => firstSave.promise);
+    vi.mocked(fake.chooseWallpaper)
+      .mockResolvedValueOnce({ name: "photo.png", mime: "image/png", bytes: Uint8Array.of(1) })
+      .mockResolvedValueOnce({ name: "photo.jpg", mime: "image/jpeg", bytes: Uint8Array.of(2) });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    const picker = root.querySelector<HTMLButtonElement>(".wallpaper-picker")!;
+    picker.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    picker.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    firstSave.resolve(firstTheme);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(vi.mocked(fake.saveTheme).mock.calls[1][0].theme.id).toBe("wallpaper-photo-2");
   });
 });
