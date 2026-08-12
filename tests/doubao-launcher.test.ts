@@ -12,8 +12,8 @@ import type { DoubaoAdapter } from "../src/shared/contracts";
 const adapter: DoubaoAdapter = {
   adapterVersion: 1,
   targets: [],
-  regions: { shell: [], header: [], content: [], composer: [], settings: [] },
-  pageStates: { main: { requiredRegions: [] }, settings: { requiredRegions: [] } }
+  regions: { appRoot: [], sidebar: [], chatArea: [], composer: [], messageAssistant: [], messageUser: [], settingsPanel: [], buttons: [] },
+  pageStates: { chat: { requiredRegions: [] }, settings: { requiredRegions: [] } }
 };
 
 describe("Doubao launcher", () => {
