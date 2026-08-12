@@ -87,6 +87,14 @@ describe("single-window editor", () => {
     expect(fake.applyTheme).toHaveBeenCalledWith(DEFAULT_THEME.id);
   });
 
+  it("explains that temporary disable stops background and startup", async () => {
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, api());
+    expect(root.textContent).toContain("暂停后台检测与开机启动");
+    expect(root.textContent).toContain("不会立即移除当前豆包皮肤");
+    expect(root.textContent).toContain("有已保存主题时恢复后台运行");
+  });
+
   it("asks the main process for confirmed restart when Doubao requires it", async () => {
     const fake = api();
     vi.mocked(fake.startDoubao).mockResolvedValue({ kind: "restart-required" });
