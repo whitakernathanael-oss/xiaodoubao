@@ -7,6 +7,14 @@ import {
   launchDoubao,
   probeDoubaoPort
 } from "../src/main/doubao-launcher";
+import type { DoubaoAdapter } from "../src/shared/contracts";
+
+const adapter: DoubaoAdapter = {
+  adapterVersion: 1,
+  targets: [],
+  regions: { shell: [], header: [], content: [], composer: [], settings: [] },
+  pageStates: { main: { requiredRegions: [] }, settings: { requiredRegions: [] } }
+};
 
 describe("Doubao launcher", () => {
   it("builds loopback-only remote debugging arguments", () => {
@@ -54,14 +62,14 @@ describe("Doubao launcher", () => {
   });
 
   it("maps a failed probe to restart-required while Doubao is running", async () => {
-    await expect(probeDoubaoPort(9225, {}, {
+    await expect(probeDoubaoPort(9225, adapter, {
       fetcher: async () => { throw new Error("connection refused"); },
       isRunning: async () => true
     })).resolves.toEqual({ kind: "restart-required" });
   });
 
   it("maps a failed probe to stopped while Doubao is not running", async () => {
-    await expect(probeDoubaoPort(9225, {}, {
+    await expect(probeDoubaoPort(9225, adapter, {
       fetcher: async () => { throw new Error("connection refused"); },
       isRunning: async () => false
     })).resolves.toEqual({ kind: "stopped" });
