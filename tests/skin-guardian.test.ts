@@ -28,14 +28,12 @@ function guardianWith(probeKinds: Array<"connected" | "restart-required" | "stop
 }
 
 describe("skin guardian", () => {
-  it("starts closed Doubao then applies saved theme once CDP is ready", async () => {
-    const { guardian, launch, apply } = guardianWith(["stopped", "connected"]);
+  it("waits without launching when Doubao is stopped", async () => {
+    const { guardian, launch, apply } = guardianWith(["stopped"]);
 
-    await expect(guardian.runOnce()).resolves.toBe("retry");
-    await expect(guardian.runOnce()).resolves.toBe("applied");
-
-    expect(launch).toHaveBeenCalledWith("C:\\Apps\\Doubao.exe", 9225);
-    expect(apply).toHaveBeenCalledWith("wallpaper-002", 9225);
+    await expect(guardian.runOnce()).resolves.toBe("waiting-for-doubao");
+    expect(launch).not.toHaveBeenCalled();
+    expect(apply).not.toHaveBeenCalled();
   });
 
   it("does not close or relaunch a running Doubao without CDP", async () => {
@@ -61,13 +59,13 @@ describe("skin guardian", () => {
     guardian.stop();
   });
 
-  it("does not repeatedly launch while it waits for the same CDP startup", async () => {
+  it("keeps waiting across repeated stopped probes", async () => {
     const { guardian, launch } = guardianWith(["stopped", "stopped"]);
 
     await guardian.runOnce();
     await guardian.runOnce();
 
-    expect(launch).toHaveBeenCalledOnce();
+    expect(launch).not.toHaveBeenCalled();
   });
 
   it("does not launch or apply after stop while state is still loading", async () => {

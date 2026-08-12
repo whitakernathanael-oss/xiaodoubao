@@ -2,7 +2,7 @@ import type { DoubaoPortStatus } from "./doubao-launcher";
 import type { ActiveSkinState } from "./skin-state";
 import type { WorkflowStatus } from "./workflow";
 
-export type GuardianResult = "applied" | "waiting-for-restart" | "retry" | "disabled";
+export type GuardianResult = "applied" | "waiting-for-restart" | "waiting-for-doubao" | "retry" | "disabled";
 
 export interface SkinGuardianDependencies {
   loadState(): Promise<ActiveSkinState | undefined>;
@@ -47,12 +47,9 @@ export class SkinGuardian {
       return "waiting-for-restart";
     }
     if (probe.kind === "stopped") {
-      if (!this.launched) {
-        this.dependencies.launch(state.doubaoExecutable, state.port);
-        this.launched = true;
-      }
       this.applied = false;
-      return "retry";
+      this.launched = false;
+      return "waiting-for-doubao";
     }
     if (probe.kind === "port-conflict") return "retry";
     this.launched = false;
