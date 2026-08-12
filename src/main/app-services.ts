@@ -283,9 +283,9 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
       if ((result.kind === "applied" || result.kind === "partial") && settings.skinPersistenceEnabled) {
         const executable = await existingExecutable(settings.doubaoExecutable);
         if (executable) {
-           await skinState.save({ version: 1, themeId: id, port: settings.port, doubaoExecutable: executable, updatedAt: new Date().toISOString() });
-           persistenceActive = true;
-           await reconcileBackground(() => guardian.startAlreadyApplied());
+          await skinState.save({ version: 1, themeId: id, port: settings.port, doubaoExecutable: executable, updatedAt: new Date().toISOString() });
+          persistenceActive = true;
+          await reconcileBackground(() => guardian.startAlreadyApplied());
         }
       }
       return result;
@@ -326,7 +326,7 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     services,
     workflow,
     startGuardian: async () => { if (!settings.skinTemporarilyDisabled) await guardian.start(); },
-     persistenceEnabled: () => shouldKeepSkinBackground(settings.skinPersistenceEnabled, persistenceActive, settings.skinTemporarilyDisabled),
+    persistenceEnabled: () => shouldKeepSkinBackground(settings.skinPersistenceEnabled, persistenceActive, settings.skinTemporarilyDisabled),
     dispose: () => { guardian.stop(); workflow.dispose(); }
   };
 }

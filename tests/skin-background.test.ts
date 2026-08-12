@@ -81,6 +81,17 @@ describe("reconcileSkinAutomationState", () => {
     expect(deps.startGuardian).toHaveBeenCalledOnce();
   });
 
+  it("stops background when reloaded active state is absent", async () => {
+    const deps = dependencies();
+    const load = vi.fn().mockResolvedValue(false);
+    await expect(reconcileSkinAutomationState({ temporarilyDisabled: false, persistenceEnabled: true, activeSkinExists: true, manageStartup: true }, load, deps)).resolves.toBe(false);
+    expect(load).toHaveBeenCalledOnce();
+    expect(deps.stopGuardian).toHaveBeenCalledOnce();
+    expect(deps.removeStartup).toHaveBeenCalledOnce();
+    expect(deps.startGuardian).not.toHaveBeenCalled();
+    expect(deps.installStartup).not.toHaveBeenCalled();
+  });
+
   it("returns false and does not run background when persistence is disabled", async () => {
     const deps = dependencies();
     const load = vi.fn().mockResolvedValue(true);
