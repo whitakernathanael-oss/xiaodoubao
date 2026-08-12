@@ -23,6 +23,7 @@ export class SkinGuardian {
   private launched = false;
   private applied = false;
   private retry = 0;
+  private waitingForDoubao = false;
   private timer?: ReturnType<typeof setTimeout>;
   private generation = 0;
 
@@ -88,9 +89,10 @@ export class SkinGuardian {
   private async tick(generation: number): Promise<void> {
     const result = await this.runOnce(generation);
     if (!this.current(generation) || result === "disabled") return;
-    if (result === "applied") this.retry = 0;
+    if (result === "applied" || result === "waiting-for-doubao") this.retry = 0;
     else this.retry = Math.min(this.retry + 1, BACKOFF.length - 1);
-    const delay = result === "applied" ? 5_000 : result === "waiting-for-doubao" ? 750 : BACKOFF[this.retry];
+    const delay = result === "applied" ? 5_000 : result === "waiting-for-doubao" ? 750 : BACKOFF[this.waitingForDoubao ? 0 : this.retry];
+    this.waitingForDoubao = result === "waiting-for-doubao";
     this.timer = this.dependencies.delay(delay, () => { void this.tick(generation); });
   }
 }
