@@ -93,7 +93,7 @@ async function waitForPort(port: number, adapter: Awaited<ReturnType<AdapterStor
 export interface ApplicationRuntime {
   services: IpcServices;
   workflow: SkinWorkflow;
-  startGuardian(): Promise<void>;
+  startGuardian(): Promise<boolean>;
   dispose(): void;
   persistenceEnabled(): boolean;
 }
@@ -146,7 +146,12 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
       stopGuardian: () => guardian.stop(),
       startGuardian,
       installStartup: () => installGuardianStartup(process.execPath, windowsStartupFolder()),
-      removeStartup: () => removeGuardianStartup(windowsStartupFolder())
+      removeStartup: () => removeGuardianStartup(windowsStartupFolder()),
+      reportError: (error) => log.write({
+        stage: "skin-background",
+        errorType: error instanceof Error ? error.name : "unknown",
+        status: "failed"
+      })
     });
   };
 
@@ -316,7 +321,12 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
         stopGuardian: () => guardian.stop(),
         startGuardian: () => guardian.start(),
         installStartup: () => installGuardianStartup(process.execPath, windowsStartupFolder()),
-        removeStartup: () => removeGuardianStartup(windowsStartupFolder())
+        removeStartup: () => removeGuardianStartup(windowsStartupFolder()),
+        reportError: (error) => log.write({
+          stage: "skin-background",
+          errorType: error instanceof Error ? error.name : "unknown",
+          status: "failed"
+        })
       });
       return { confirmBeforeRestart: settings.confirmBeforeRestart, temporarilyDisabled: settings.skinTemporarilyDisabled };
     },
@@ -325,7 +335,11 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
   return {
     services,
     workflow,
-    startGuardian: async () => { if (!settings.skinTemporarilyDisabled) await guardian.start(); },
+    startGuardian: async (): Promise<boolean> => {
+      if (!shouldKeepSkinBackground(settings.skinPersistenceEnabled, persistenceActive, settings.skinTemporarilyDisabled)) return false;
+      await guardian.start();
+      return true;
+    },
     persistenceEnabled: () => shouldKeepSkinBackground(settings.skinPersistenceEnabled, persistenceActive, settings.skinTemporarilyDisabled),
     dispose: () => { guardian.stop(); workflow.dispose(); }
   };

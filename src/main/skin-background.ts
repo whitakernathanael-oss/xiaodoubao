@@ -9,6 +9,7 @@ export interface SkinBackgroundDependencies {
   startGuardian: () => void | Promise<void>;
   installStartup: () => void | Promise<void>;
   removeStartup: () => void | Promise<void>;
+  reportError?: (error: unknown) => void | Promise<void>;
 }
 
 export interface SkinAutomationState {
@@ -30,10 +31,18 @@ export async function reconcileSkinBackground(
   input: SkinBackgroundInput,
   dependencies: SkinBackgroundDependencies
 ): Promise<void> {
+  const reportAndThrow = async (error: unknown): Promise<never> => {
+    try { await dependencies.reportError?.(error); } catch { /* Preserve the reconciliation error. */ }
+    throw error;
+  };
   if (input.temporarilyDisabled || !input.shouldRun) {
     await dependencies.stopGuardian();
     if (input.manageStartup) {
-      await dependencies.removeStartup();
+      try {
+        await dependencies.removeStartup();
+      } catch (error) {
+        await reportAndThrow(error);
+      }
     }
     return;
   }
@@ -51,7 +60,7 @@ export async function reconcileSkinBackground(
 
   await dependencies.startGuardian();
   if (startupFailed) {
-    throw startupError;
+    await reportAndThrow(startupError);
   }
 }
 

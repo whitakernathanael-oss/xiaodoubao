@@ -79,7 +79,7 @@ if (!handleSquirrelEvent()) {
   app.whenReady().then(async () => {
     runtime = await createApplicationRuntime();
     if (guardianMode) {
-      await runtime.startGuardian();
+      if (!await runtime.startGuardian()) app.quit();
       return;
     }
     removeHandlers = registerIpcHandlers(runtime.services, ipcMain);

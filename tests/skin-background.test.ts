@@ -7,6 +7,7 @@ function dependencies() {
     startGuardian: vi.fn(),
     installStartup: vi.fn(),
     removeStartup: vi.fn(),
+    reportError: vi.fn(),
   };
 }
 
@@ -53,6 +54,20 @@ describe("reconcileSkinBackground", () => {
       reconcileSkinBackground({ temporarilyDisabled: false, shouldRun: true, manageStartup: true }, deps)
     ).rejects.toBe(error);
     expect(deps.startGuardian).toHaveBeenCalledOnce();
+    expect(deps.reportError).toHaveBeenCalledOnce();
+    expect(deps.reportError).toHaveBeenCalledWith(error);
+  });
+
+  it("reports removal failures once and preserves the original error when reporter fails", async () => {
+    const deps = dependencies();
+    const error = new Error("remove failed");
+    deps.removeStartup.mockRejectedValueOnce(error);
+    deps.reportError.mockRejectedValueOnce(new Error("report failed"));
+    await expect(
+      reconcileSkinBackground({ temporarilyDisabled: true, shouldRun: false, manageStartup: true }, deps)
+    ).rejects.toBe(error);
+    expect(deps.reportError).toHaveBeenCalledOnce();
+    expect(deps.reportError).toHaveBeenCalledWith(error);
   });
 
   it("does not touch startup entries when startup management is disabled", async () => {

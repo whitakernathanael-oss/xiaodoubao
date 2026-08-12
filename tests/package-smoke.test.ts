@@ -59,6 +59,10 @@ describe("Windows package metadata", () => {
     const source = await readFile(path.join(process.cwd(), "src", "main.ts"), "utf8");
     expect(source).toContain("--skin-guardian");
     expect(source).toContain("startGuardian");
+    expect(source).toContain("if (!await runtime.startGuardian()) app.quit();");
+    const services = await readFile(path.join(process.cwd(), "src", "main", "app-services.ts"), "utf8");
+    expect(services).toContain("startGuardian(): Promise<boolean>");
+    expect(services).toContain("shouldKeepSkinBackground(settings.skinPersistenceEnabled, persistenceActive, settings.skinTemporarilyDisabled)");
   });
 
   it("keeps all three editor columns usable on high-DPI displays", async () => {
