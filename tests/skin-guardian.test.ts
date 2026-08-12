@@ -28,6 +28,21 @@ function guardianWith(probeKinds: Array<"connected" | "restart-required" | "stop
 }
 
 describe("skin guardian", () => {
+  it("schedules the next stopped probe after 750ms", async () => {
+    const delays: number[] = [];
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state),
+      probe: vi.fn(async () => ({ kind: "stopped" as const })),
+      launch: vi.fn(),
+      apply: vi.fn(async () => ({ kind: "applied" as const })),
+      delay: (milliseconds, _callback) => { delays.push(milliseconds); return setTimeout(() => undefined, 0); }
+    });
+
+    await guardian.start();
+    expect(delays[0]).toBe(750);
+    guardian.stop();
+  });
+
   it("waits without launching when Doubao is stopped", async () => {
     const { guardian, launch, apply } = guardianWith(["stopped"]);
 

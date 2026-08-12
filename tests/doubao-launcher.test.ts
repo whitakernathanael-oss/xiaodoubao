@@ -4,7 +4,8 @@ import {
   candidateDoubaoPaths,
   closeDoubaoGracefully,
   findDoubaoExecutable,
-  launchDoubao
+  launchDoubao,
+  probeDoubaoPort
 } from "../src/main/doubao-launcher";
 
 describe("Doubao launcher", () => {
@@ -50,5 +51,19 @@ describe("Doubao launcher", () => {
   it("continues only after the user has exited Doubao normally", async () => {
     await expect(closeDoubaoGracefully(true, async () => false)).resolves.toBe(true);
     await expect(closeDoubaoGracefully(true, async () => true)).resolves.toBe(false);
+  });
+
+  it("maps a failed probe to restart-required while Doubao is running", async () => {
+    await expect(probeDoubaoPort(9225, {}, {
+      fetcher: async () => { throw new Error("connection refused"); },
+      isRunning: async () => true
+    })).resolves.toEqual({ kind: "restart-required" });
+  });
+
+  it("maps a failed probe to stopped while Doubao is not running", async () => {
+    await expect(probeDoubaoPort(9225, {}, {
+      fetcher: async () => { throw new Error("connection refused"); },
+      isRunning: async () => false
+    })).resolves.toEqual({ kind: "stopped" });
   });
 });

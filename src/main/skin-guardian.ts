@@ -90,7 +90,7 @@ export class SkinGuardian {
     if (!this.current(generation) || result === "disabled") return;
     if (result === "applied") this.retry = 0;
     else this.retry = Math.min(this.retry + 1, BACKOFF.length - 1);
-    const delay = result === "applied" ? 5_000 : BACKOFF[this.retry];
+    const delay = result === "applied" ? 5_000 : result === "waiting-for-doubao" ? 750 : BACKOFF[this.retry];
     this.timer = this.dependencies.delay(delay, () => { void this.tick(generation); });
   }
 }
