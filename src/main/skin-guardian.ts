@@ -65,6 +65,7 @@ export class SkinGuardian {
 
   async start(): Promise<void> {
     this.stopped = false;
+    this.retry = 0;
     this.generation += 1;
     await this.tick(this.generation);
   }

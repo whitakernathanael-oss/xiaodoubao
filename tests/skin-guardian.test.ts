@@ -65,6 +65,24 @@ describe("skin guardian", () => {
     guardian.stop();
   });
 
+  it("resets retry backoff after stop and start", async () => {
+    const delays: number[] = [];
+    const callbacks: Array<() => void> = [];
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state),
+      probe: vi.fn(async () => ({ kind: "port-conflict" as const })),
+      launch: vi.fn(), apply: vi.fn(async () => ({ kind: "applied" as const })),
+      delay: (milliseconds, callback) => { delays.push(milliseconds); callbacks.push(callback); return setTimeout(() => undefined, 0); }
+    });
+    await guardian.start();
+    callbacks.shift()?.();
+    await vi.waitFor(() => expect(delays).toHaveLength(2));
+    guardian.stop();
+    await guardian.start();
+    expect(delays).toEqual([1_000, 2_000, 1_000]);
+    guardian.stop();
+  });
+
   it("waits without launching when Doubao is stopped", async () => {
     const { guardian, launch, apply } = guardianWith(["stopped"]);
 
