@@ -103,10 +103,10 @@ export async function closeDoubaoForRestart(
 ): Promise<boolean> {
   try {
     const listed = await runProcess("tasklist.exe", ["/FI", "IMAGENAME eq Doubao.exe", "/FO", "CSV", "/NH"], { windowsHide: true });
-    const match = listed.stdout.match(/"Doubao\.exe","(\d+)"/i);
-    if (!match) return true;
-    await runProcess("taskkill.exe", ["/PID", match[1], "/T", "/F"], { windowsHide: true });
-    return true;
+    if (!/"Doubao\.exe","\d+"/i.test(listed.stdout)) return true;
+    await runProcess("taskkill.exe", ["/IM", "Doubao.exe", "/T", "/F"], { windowsHide: true });
+    const remaining = await runProcess("tasklist.exe", ["/FI", "IMAGENAME eq Doubao.exe", "/FO", "CSV", "/NH"], { windowsHide: true });
+    return !/"Doubao\.exe","\d+"/i.test(remaining.stdout);
   } catch {
     return false;
   }

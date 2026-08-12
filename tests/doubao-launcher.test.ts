@@ -3,6 +3,7 @@ import {
   buildDoubaoArgs,
   candidateDoubaoPaths,
   closeDoubaoGracefully,
+  closeDoubaoForRestart,
   findDoubaoExecutable,
   launchDoubao,
   probeDoubaoPort
@@ -59,6 +60,26 @@ describe("Doubao launcher", () => {
   it("continues only after the user has exited Doubao normally", async () => {
     await expect(closeDoubaoGracefully(true, async () => false)).resolves.toBe(true);
     await expect(closeDoubaoGracefully(true, async () => true)).resolves.toBe(false);
+  });
+
+  it("closes every Doubao process and verifies they exited", async () => {
+    const runProcess = vi.fn()
+      .mockResolvedValueOnce({ stdout: '"Doubao.exe","101","Console","1","10 K"\r\n"Doubao.exe","202","Console","1","10 K"\r\n', stderr: "" })
+      .mockResolvedValueOnce({ stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ stdout: "", stderr: "" });
+
+    await expect(closeDoubaoForRestart(runProcess)).resolves.toBe(true);
+    expect(runProcess).toHaveBeenNthCalledWith(2, "taskkill.exe", ["/IM", "Doubao.exe", "/T", "/F"], { windowsHide: true });
+    expect(runProcess).toHaveBeenNthCalledWith(3, "tasklist.exe", ["/FI", "IMAGENAME eq Doubao.exe", "/FO", "CSV", "/NH"], { windowsHide: true });
+  });
+
+  it("reports failure when Doubao remains after taskkill", async () => {
+    const runProcess = vi.fn()
+      .mockResolvedValueOnce({ stdout: '"Doubao.exe","101","Console","1","10 K"\r\n', stderr: "" })
+      .mockResolvedValueOnce({ stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ stdout: '"Doubao.exe","101","Console","1","10 K"\r\n', stderr: "" });
+
+    await expect(closeDoubaoForRestart(runProcess)).resolves.toBe(false);
   });
 
   it("maps a failed probe to restart-required while Doubao is running", async () => {
