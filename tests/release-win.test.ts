@@ -18,9 +18,23 @@ afterEach(async () => {
 });
 
 describe("Windows release helper", () => {
+  it("publishes release version metadata", async () => {
+    const packageJson = JSON.parse(await readFile(path.resolve("package.json"), "utf8")) as {
+      version: string;
+    };
+    const packageLock = JSON.parse(await readFile(path.resolve("package-lock.json"), "utf8")) as {
+      version: string;
+      packages: { "": { version: string } };
+    };
+
+    expect(packageJson.version).toBe("0.1.13");
+    expect(packageLock.version).toBe("0.1.13");
+    expect(packageLock.packages[""].version).toBe("0.1.13");
+  });
+
   it("publishes the persistent-skin release version", async () => {
     const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8"));
-    expect(packageJson.version).toBe("0.1.12");
+    expect(packageJson.version).toBe("0.1.13");
   });
 
   it("deletes only the project out directory", async () => {
