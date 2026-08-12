@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { reconcileSkinBackground, shouldKeepSkinBackground } from "../src/main/skin-background";
+import { reconcileSkinAutomationState, reconcileSkinBackground, shouldKeepSkinBackground } from "../src/main/skin-background";
 
 function dependencies() {
   return {
@@ -61,5 +61,32 @@ describe("reconcileSkinBackground", () => {
     expect(deps.installStartup).not.toHaveBeenCalled();
     expect(deps.removeStartup).not.toHaveBeenCalled();
     expect(deps.startGuardian).toHaveBeenCalledOnce();
+  });
+});
+
+describe("reconcileSkinAutomationState", () => {
+  it("preserves cached active state and does not load while temporarily disabled", async () => {
+    const deps = dependencies();
+    const load = vi.fn().mockResolvedValue(false);
+    await expect(reconcileSkinAutomationState({ temporarilyDisabled: true, persistenceEnabled: true, activeSkinExists: true, manageStartup: true }, load, deps)).resolves.toBe(true);
+    expect(load).not.toHaveBeenCalled();
+    expect(deps.stopGuardian).toHaveBeenCalledOnce();
+  });
+
+  it("reloads active state when enabled with persistence", async () => {
+    const deps = dependencies();
+    const load = vi.fn().mockResolvedValue(true);
+    await expect(reconcileSkinAutomationState({ temporarilyDisabled: false, persistenceEnabled: true, activeSkinExists: false, manageStartup: true }, load, deps)).resolves.toBe(true);
+    expect(load).toHaveBeenCalledOnce();
+    expect(deps.startGuardian).toHaveBeenCalledOnce();
+  });
+
+  it("returns false and does not run background when persistence is disabled", async () => {
+    const deps = dependencies();
+    const load = vi.fn().mockResolvedValue(true);
+    await expect(reconcileSkinAutomationState({ temporarilyDisabled: false, persistenceEnabled: false, activeSkinExists: true, manageStartup: true }, load, deps)).resolves.toBe(false);
+    expect(load).not.toHaveBeenCalled();
+    expect(deps.stopGuardian).toHaveBeenCalledOnce();
+    expect(deps.startGuardian).not.toHaveBeenCalled();
   });
 });

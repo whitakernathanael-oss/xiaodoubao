@@ -11,6 +11,13 @@ export interface SkinBackgroundDependencies {
   removeStartup: () => void | Promise<void>;
 }
 
+export interface SkinAutomationState {
+  temporarilyDisabled: boolean;
+  persistenceEnabled: boolean;
+  activeSkinExists: boolean;
+  manageStartup: boolean;
+}
+
 export function shouldKeepSkinBackground(
   persistenceEnabled: boolean,
   activeSkinExists: boolean,
@@ -46,4 +53,21 @@ export async function reconcileSkinBackground(
   if (startupFailed) {
     throw startupError;
   }
+}
+
+export async function reconcileSkinAutomationState(
+  state: SkinAutomationState,
+  loadActiveSkinExists: () => boolean | Promise<boolean>,
+  dependencies: SkinBackgroundDependencies
+): Promise<boolean> {
+  let activeSkinExists = state.activeSkinExists;
+  if (!state.temporarilyDisabled && state.persistenceEnabled) {
+    activeSkinExists = await loadActiveSkinExists();
+  }
+  await reconcileSkinBackground({
+    temporarilyDisabled: state.temporarilyDisabled,
+    shouldRun: state.persistenceEnabled && activeSkinExists,
+    manageStartup: state.manageStartup
+  }, dependencies);
+  return state.temporarilyDisabled || state.persistenceEnabled ? activeSkinExists : false;
 }

@@ -19,7 +19,7 @@ import { ThemeStore } from "./theme-store";
 import { SkinWorkflow } from "./workflow";
 import { SkinGuardian } from "./skin-guardian";
 import { SkinStateStore } from "./skin-state";
-import { reconcileSkinBackground, shouldKeepSkinBackground } from "./skin-background";
+import { reconcileSkinAutomationState, reconcileSkinBackground, shouldKeepSkinBackground } from "./skin-background";
 import { installGuardianStartup, removeGuardianStartup, windowsStartupFolder } from "./startup-shortcut";
 import { inspectWallpaper, validateWallpaperByteLength } from "./wallpaper-validation";
 import type { SaveThemeInput } from "../shared/ipc";
@@ -307,8 +307,17 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     setSkinAutomation: async (patch) => {
       settings = { ...settings, ...patch };
       await settingsStore.save(settings);
-      if (!settings.skinTemporarilyDisabled) persistenceActive = Boolean(await skinState.load());
-      await reconcileBackground();
+      persistenceActive = await reconcileSkinAutomationState({
+        temporarilyDisabled: settings.skinTemporarilyDisabled,
+        persistenceEnabled: settings.skinPersistenceEnabled,
+        activeSkinExists: persistenceActive,
+        manageStartup
+      }, async () => Boolean(await skinState.load()), {
+        stopGuardian: () => guardian.stop(),
+        startGuardian: () => guardian.start(),
+        installStartup: () => installGuardianStartup(process.execPath, windowsStartupFolder()),
+        removeStartup: () => removeGuardianStartup(windowsStartupFolder())
+      });
       return { confirmBeforeRestart: settings.confirmBeforeRestart, temporarilyDisabled: settings.skinTemporarilyDisabled };
     },
     chooseDoubaoExecutable: chooseExecutable
