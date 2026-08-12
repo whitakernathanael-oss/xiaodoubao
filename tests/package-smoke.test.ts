@@ -41,6 +41,14 @@ describe("Windows package metadata", () => {
     }
   });
 
+  it("wires skin background coordination into the application runtime", async () => {
+    const source = await readFile(path.join(process.cwd(), "src", "main", "app-services.ts"), "utf8");
+    expect(source).toContain("shouldKeepSkinBackground(");
+    expect(source).toContain("await skinState.load()");
+    expect(source).toContain("reconcileSkinBackground(");
+    expect(source).not.toContain("settings.skinPersistenceEnabled && persistenceActive");
+  });
+
   it("disables the heavyweight GPU process before Electron becomes ready", async () => {
     const source = await readFile(path.join(process.cwd(), "src", "main.ts"), "utf8");
     expect(source.indexOf("app.disableHardwareAcceleration()"))
@@ -58,7 +66,7 @@ describe("Windows package metadata", () => {
   it("does not keep a first-run window hidden before a skin is active", async () => {
     const source = await readFile(path.join(process.cwd(), "src", "main", "app-services.ts"), "utf8");
     expect(source).toContain("let persistenceActive = Boolean(await skinState.load())");
-    expect(source).toContain("settings.skinPersistenceEnabled && persistenceActive");
+    expect(source).not.toContain("settings.skinPersistenceEnabled && persistenceActive");
   });
 
   it("keeps all three editor columns usable on high-DPI displays", async () => {

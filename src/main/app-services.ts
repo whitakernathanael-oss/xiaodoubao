@@ -19,6 +19,7 @@ import { ThemeStore } from "./theme-store";
 import { SkinWorkflow } from "./workflow";
 import { SkinGuardian } from "./skin-guardian";
 import { SkinStateStore } from "./skin-state";
+import { reconcileSkinBackground, shouldKeepSkinBackground } from "./skin-background";
 import { installGuardianStartup, removeGuardianStartup, windowsStartupFolder } from "./startup-shortcut";
 import { inspectWallpaper, validateWallpaperByteLength } from "./wallpaper-validation";
 import type { SaveThemeInput } from "../shared/ipc";
@@ -135,6 +136,19 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     delay: (milliseconds, callback) => setTimeout(callback, milliseconds),
     cancel: clearTimeout
   });
+  const manageStartup = app.isPackaged && process.platform === "win32";
+  const reconcileBackground = async (startGuardian: () => void | Promise<void> = () => guardian.start()): Promise<void> => {
+    await reconcileSkinBackground({
+      temporarilyDisabled: settings.skinTemporarilyDisabled,
+      shouldRun: shouldKeepSkinBackground(settings.skinPersistenceEnabled, persistenceActive, settings.skinTemporarilyDisabled),
+      manageStartup
+    }, {
+      stopGuardian: () => guardian.stop(),
+      startGuardian,
+      installStartup: () => installGuardianStartup(process.execPath, windowsStartupFolder()),
+      removeStartup: () => removeGuardianStartup(windowsStartupFolder())
+    });
+  };
 
   const removePersistence = async (): Promise<void> => {
     guardian.stop();
@@ -271,8 +285,7 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
         if (executable) {
            await skinState.save({ version: 1, themeId: id, port: settings.port, doubaoExecutable: executable, updatedAt: new Date().toISOString() });
            persistenceActive = true;
-          if (app.isPackaged && process.platform === "win32") await installGuardianStartup(process.execPath, windowsStartupFolder());
-          await guardian.startAlreadyApplied();
+           await reconcileBackground(() => guardian.startAlreadyApplied());
         }
       }
       return result;
@@ -294,8 +307,8 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     setSkinAutomation: async (patch) => {
       settings = { ...settings, ...patch };
       await settingsStore.save(settings);
-      if (settings.skinTemporarilyDisabled) guardian.stop();
-      else if (settings.skinPersistenceEnabled && persistenceActive) await guardian.start();
+      if (!settings.skinTemporarilyDisabled) persistenceActive = Boolean(await skinState.load());
+      await reconcileBackground();
       return { confirmBeforeRestart: settings.confirmBeforeRestart, temporarilyDisabled: settings.skinTemporarilyDisabled };
     },
     chooseDoubaoExecutable: chooseExecutable
@@ -304,7 +317,7 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     services,
     workflow,
     startGuardian: async () => { if (!settings.skinTemporarilyDisabled) await guardian.start(); },
-    persistenceEnabled: () => settings.skinPersistenceEnabled && persistenceActive,
+     persistenceEnabled: () => shouldKeepSkinBackground(settings.skinPersistenceEnabled, persistenceActive, settings.skinTemporarilyDisabled),
     dispose: () => { guardian.stop(); workflow.dispose(); }
   };
 }
