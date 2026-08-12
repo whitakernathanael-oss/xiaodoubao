@@ -48,6 +48,7 @@ describe("skin guardian", () => {
     const callbacks: Array<() => void> = [];
     const probe = vi.fn()
       .mockResolvedValueOnce({ kind: "stopped" as const })
+      .mockResolvedValueOnce({ kind: "port-conflict" as const })
       .mockResolvedValueOnce({ kind: "port-conflict" as const });
     const guardian = new SkinGuardian({
       loadState: vi.fn(async () => state), probe,
@@ -58,7 +59,9 @@ describe("skin guardian", () => {
     await guardian.start();
     callbacks.shift()?.();
     await vi.waitFor(() => expect(delays).toHaveLength(2));
-    expect(delays).toEqual([750, 1_000]);
+    callbacks.shift()?.();
+    await vi.waitFor(() => expect(delays).toHaveLength(3));
+    expect(delays).toEqual([750, 1_000, 2_000]);
     guardian.stop();
   });
 
