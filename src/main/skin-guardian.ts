@@ -22,6 +22,7 @@ export class SkinGuardian {
   private stopped = false;
   private launched = false;
   private applied = false;
+  private takeoverPending = false;
   private retry = 0;
   private timer?: ReturnType<typeof setTimeout>;
   private generation = 0;
@@ -34,6 +35,7 @@ export class SkinGuardian {
     if (!state) {
       this.applied = false;
       this.launched = false;
+      this.takeoverPending = false;
       return "disabled";
     }
     const probe = await this.dependencies.probe(state.port);
@@ -42,6 +44,7 @@ export class SkinGuardian {
       this.applied = false;
       this.launched = false;
       if (this.dependencies.shouldRestartRunningDoubao?.()) {
+        this.takeoverPending = true;
         return await this.dependencies.restartRunningDoubao?.(state.port) ? "retry" : "waiting-for-restart";
       }
       return "waiting-for-restart";
@@ -49,6 +52,10 @@ export class SkinGuardian {
     if (probe.kind === "stopped") {
       this.applied = false;
       this.launched = false;
+      if (this.takeoverPending) {
+        try { this.dependencies.launch(state.doubaoExecutable, state.port); } catch { /* Retry on the next probe. */ }
+        return "retry";
+      }
       return "waiting-for-doubao";
     }
     if (probe.kind === "port-conflict") return "retry";
@@ -60,6 +67,7 @@ export class SkinGuardian {
       return "disabled";
     }
     this.applied = status.kind === "applied" || status.kind === "partial";
+    if (this.applied) this.takeoverPending = false;
     return this.applied ? "applied" : "retry";
   }
 
@@ -77,6 +85,7 @@ export class SkinGuardian {
 
   stop(): void {
     this.stopped = true;
+    this.takeoverPending = false;
     this.generation += 1;
     if (this.timer) (this.dependencies.cancel ?? clearTimeout)(this.timer);
     this.timer = undefined;

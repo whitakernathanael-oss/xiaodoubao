@@ -114,6 +114,40 @@ describe("skin guardian", () => {
     guardian.stop();
   });
 
+  it("recovers a pending takeover when the next probe is stopped", async () => {
+    const launch = vi.fn();
+    const restartRunningDoubao = vi.fn(async () => false);
+    const probe = vi.fn()
+      .mockResolvedValueOnce({ kind: "restart-required" as const })
+      .mockResolvedValueOnce({ kind: "stopped" as const });
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state), probe, launch,
+      apply: vi.fn(async () => ({ kind: "applied" as const })),
+      shouldRestartRunningDoubao: () => true, restartRunningDoubao,
+      delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
+    });
+
+    await expect(guardian.runOnce()).resolves.toBe("waiting-for-restart");
+    await expect(guardian.runOnce()).resolves.toBe("retry");
+    expect(launch).toHaveBeenCalledWith(state.doubaoExecutable, state.port);
+  });
+
+  it("returns retry when pending takeover launch throws", async () => {
+    const launch = vi.fn(() => { throw new Error("launch failed"); });
+    const probe = vi.fn()
+      .mockResolvedValueOnce({ kind: "restart-required" as const })
+      .mockResolvedValueOnce({ kind: "stopped" as const });
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state), probe, launch,
+      apply: vi.fn(async () => ({ kind: "applied" as const })),
+      shouldRestartRunningDoubao: () => true, restartRunningDoubao: vi.fn(async () => false),
+      delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
+    });
+
+    await guardian.runOnce();
+    await expect(guardian.runOnce()).resolves.toBe("retry");
+  });
+
   it("keeps waiting across repeated stopped probes", async () => {
     const { guardian, launch } = guardianWith(["stopped", "stopped"]);
 
