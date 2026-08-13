@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 vi.mock("../src/renderer/palette", () => ({ extractPalette: vi.fn() }));
 
 import { mountApp } from "../src/renderer/app";
@@ -85,6 +86,35 @@ describe("single-window editor", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(fake.applyTheme).toHaveBeenCalledOnce();
     expect(fake.applyTheme).toHaveBeenCalledWith(DEFAULT_THEME.id);
+  });
+
+  it("keeps automation controls out of the top bar", async () => {
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, api());
+    for (const action of ["persistence", "confirm-before-restart", "temporarily-disable-skin"]) {
+      expect(root.querySelector(`.topbar [data-action='${action}']`)).toBeNull();
+      expect(root.querySelector(`.automation-panel [data-action='${action}']`)).not.toBeNull();
+    }
+  });
+
+  it("places temporary-disable guidance inside automation settings", async () => {
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, api());
+    const guidance = root.querySelector(".automation-panel [data-role='temporary-disable-help']");
+    expect(guidance?.textContent).toContain("暂停后台检测与开机启动");
+    expect(guidance?.textContent).toContain("不删除已保存主题");
+    expect(root.querySelector(".topbar")?.textContent).not.toContain("暂停后台检测与开机启动");
+  });
+
+  it("ships the neutral responsive workspace styles", () => {
+    const css = readFileSync(new URL("../src/renderer/styles.css", import.meta.url), "utf8");
+    expect(css).toContain(".automation-panel");
+    expect(css).toContain('[data-role="temporary-disable-help"]');
+    expect(css).toContain("@media (max-width: 900px)");
+    expect(css).not.toContain("#7257dd");
+    expect(css).not.toContain("#7257df");
+    expect(css).not.toContain("#8a62de");
+    expect(css).not.toContain(".panel-title > button");
   });
 
   it("saves and reapplies the current theme before enabling persistence", async () => {

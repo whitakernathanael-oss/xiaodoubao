@@ -57,7 +57,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     <div class="app-shell">
       <header class="topbar">
         <div class="wordmark"><span>豆</span><div><b>豆包皮肤版</b><small>Doubao AutoSkin</small></div></div>
-        <div class="topbar__status"><label class="persistence"><input type="checkbox" data-action="persistence">自动保持皮肤</label><label class="persistence"><input type="checkbox" data-action="confirm-before-restart">关闭豆包前询问我</label><label class="persistence"><input type="checkbox" data-action="temporarily-disable-skin">暂时停用皮肤<small>暂停后台检测与开机启动，不删除已保存主题，也不会立即移除当前豆包皮肤。重新启用后，有已保存主题时恢复后台运行。</small></label><i></i><span data-role="status">正在检查豆包…</span><button data-action="start">启动 / 连接</button></div>
+        <div class="topbar__status"><i></i><span data-role="status">正在检查豆包…</span><button data-action="start">启动 / 连接</button></div>
       </header>
       <div class="workspace">
         <aside class="theme-panel">
@@ -71,8 +71,8 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
           <p class="stage__hint">预览不会打开或嵌入真实豆包页面，点击“应用到豆包”后才会注入。</p>
         </main>
         <aside class="control-panel">
-          <div class="control-panel__head"><small>WALLPAPER</small><input data-role="theme-name" aria-label="主题名称"></div>
-          <section class="region-controls" data-role="region-controls"></section>
+          <section class="appearance-panel"><div class="control-panel__head"><small>外观</small><input data-role="theme-name" aria-label="主题名称"></div><section class="region-controls" data-role="region-controls"></section></section>
+          <section class="automation-panel"><h2>自动运行</h2><label class="persistence"><input type="checkbox" data-action="persistence">自动保持皮肤</label><label class="persistence"><input type="checkbox" data-action="confirm-before-restart">关闭豆包前询问我</label><label class="persistence"><input type="checkbox" data-action="temporarily-disable-skin">暂时停用皮肤</label><small data-role="temporary-disable-help">暂停后台检测与开机启动，不删除已保存主题，也不会立即移除当前豆包皮肤。重新启用后，有已保存主题时恢复后台运行。</small></section>
         </aside>
       </div>
       <footer class="actionbar">
