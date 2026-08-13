@@ -119,6 +119,9 @@ describe("single-window editor", () => {
     expect(css).toContain(":focus-visible");
     expect(css).toContain("::selection");
     expect(css).toContain("scrollbar");
+    expect(css).toContain(".wallpaper-picker small");
+    expect(css).toContain(".control-row");
+    expect(css).toContain('.range-control input[type="number"]');
   });
 
   it("shows the selected theme in the topbar and keeps delete in a more menu", async () => {
@@ -133,11 +136,12 @@ describe("single-window editor", () => {
     await mountApp(root, fake);
     expect(root.querySelector("[data-role='current-theme']")?.textContent).toContain(DEFAULT_THEME.name);
     expect(root.querySelector(".theme-tools [data-action='delete']")).toBeNull();
-    expect(root.querySelector("details [data-action='delete']")).not.toBeNull();
+    expect(root.querySelector(".theme-panel [data-action='delete']")).toBeNull();
+    expect(root.querySelector(".topbar .more-actions [data-action='delete']")).not.toBeNull();
     root.querySelector<HTMLButtonElement>("[data-theme-id='second']")!.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(root.querySelector("[data-role='current-theme']")?.textContent).toContain("第二主题");
-    root.querySelector<HTMLButtonElement>("details [data-action='delete']")!.click();
+    root.querySelector<HTMLButtonElement>(".topbar .more-actions [data-action='delete']")!.click();
     expect(fake.deleteTheme).toHaveBeenCalledWith(second.id);
   });
 

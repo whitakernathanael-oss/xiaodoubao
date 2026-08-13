@@ -44,7 +44,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .theme-card em { padding: 3px 5px; border-radius: 5px; color: #666; background: #eee; font-size: 8px; font-style: normal; }
 .theme-tools { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; padding-top: 12px; }
 .theme-tools button { padding: 7px 3px; border: 1px solid #e1e1e8; border-radius: 8px; background: #fff; color: #6b6b76; font-size: 10px; }
-.more-actions { position:relative; margin-top:6px; }.more-actions summary { min-height:36px; padding:7px 3px; border:1px solid #e1e1e8; border-radius:8px; background:#fff; color:#6b6b76; font-size:10px; text-align:center; cursor:pointer; list-style:none; }.more-actions button { position:absolute; right:0; bottom:calc(100% + 4px); width:100%; background:#fff; }
+.more-actions { position:relative; margin-top:6px; }.topbar .more-actions { margin-top:0; }.more-actions summary { min-height:36px; padding:7px 10px; border:1px solid #e1e1e8; border-radius:8px; background:#fff; color:#6b6b76; font-size:11px; text-align:center; cursor:pointer; list-style:none; }.more-actions button { position:absolute; right:0; bottom:calc(100% + 4px); width:100%; background:#fff; }
 
 .stage { display: flex; flex-direction: column; padding: 20px 24px 13px; overflow: hidden; }
 .stage__head { margin-bottom: 14px; }
@@ -75,11 +75,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .control-panel { display:flex;flex-direction:column;overflow:auto;background:#fff; }.appearance-panel,.automation-panel { padding-bottom:12px; }.automation-panel { padding:12px 18px; border-top:1px solid #e1e1e1; }.automation-panel h2 { margin:0 0 12px; font-size:13px; }.automation-panel > .persistence { min-height:34px; }.automation-panel [data-role="temporary-disable-help"] { display:block; margin-top:8px; color:#777; font-size:11px; line-height:1.5; }
 .control-panel__head { padding:20px 18px 12px; }.control-panel__head input { display:block;width:100%;margin-top:6px;padding:0;border:0;outline:0;background:transparent;color:#292934;font-size:17px;font-weight:700; }
 .region-controls { min-height:0;overflow:auto;padding:0 18px 20px; }
-.wallpaper-picker { width:100%;display:grid;gap:4px;margin:3px 0 10px;padding:12px;border:1px dashed #bbb;border-radius:8px;background:#f7f7f7;color:#333;text-align:left;font-size:11px; }.wallpaper-picker small { overflow:hidden;color:#777;text-overflow:ellipsis;white-space:nowrap;font-size:9px; }
-.control-row { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;border-bottom:1px solid #e8e8ed;color:#61616c;font-size:10px; }
-.control-row select { padding:5px 7px;border:1px solid #dcdce5;border-radius:7px;background:#fff;color:#555560;font-size:10px; }
+.wallpaper-picker { width:100%;display:grid;gap:4px;margin:3px 0 10px;padding:12px;border:1px dashed #bbb;border-radius:8px;background:#f7f7f7;color:#333;text-align:left;font-size:11px; }.wallpaper-picker small { overflow:hidden;color:#777;text-overflow:ellipsis;white-space:nowrap;font-size:11px; }
+.control-row { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;border-bottom:1px solid #e8e8ed;color:#61616c;font-size:11px; }
+.control-row select { padding:5px 7px;border:1px solid #dcdce5;border-radius:7px;background:#fff;color:#555560;font-size:11px; }
 .range-control { display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0; }
-.range-control input[type="range"] { width:78px;accent-color:#202020; }.range-control input[type="number"] { width:49px;padding:5px;border:1px solid #dddde5;border-radius:6px;background:#fff;color:#5d5d67;font-size:9px; }
+.range-control input[type="range"] { width:78px;accent-color:#202020; }.range-control input[type="number"] { width:49px;padding:5px;border:1px solid #dddde5;border-radius:6px;background:#fff;color:#5d5d67;font-size:11px; }
 
 .actionbar { justify-content:flex-end;border-top:1px solid #dedee5; }.actionbar > div { display:flex;gap:8px; }.actionbar button { min-height:36px;padding:9px 13px;border:1px solid #dddde5;border-radius:7px;background:#fff;color:#5d5d68;font-size:11px; }.actionbar button.danger { color:#bf5b65; }.actionbar button.primary { border-color:#202020;background:#202020;color:#fff; }
 
