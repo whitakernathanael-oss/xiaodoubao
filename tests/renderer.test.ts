@@ -87,6 +87,135 @@ describe("single-window editor", () => {
     expect(fake.applyTheme).toHaveBeenCalledWith(DEFAULT_THEME.id);
   });
 
+  it("saves and reapplies the current theme before enabling persistence", async () => {
+    const fake = api();
+    vi.mocked(fake.getSkinPersistence).mockResolvedValue({ enabled: false });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    root.querySelector<HTMLInputElement>("[data-action='persistence']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.saveTheme).toHaveBeenCalledOnce();
+    expect(fake.setSkinPersistence).toHaveBeenCalledWith(true);
+    expect(fake.applyTheme).toHaveBeenCalledWith(DEFAULT_THEME.id);
+    expect(vi.mocked(fake.saveTheme).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(fake.setSkinPersistence).mock.invocationCallOrder[0]);
+    expect(vi.mocked(fake.setSkinPersistence).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(fake.applyTheme).mock.invocationCallOrder[0]);
+    expect(root.querySelector("[data-role='status']")?.textContent).toBe("自动保持皮肤已开启");
+  });
+
+  it("ignores an enable that finishes after persistence was disabled", async () => {
+    const fake = api();
+    const save = deferred<ThemeSummary>();
+    vi.mocked(fake.getSkinPersistence).mockResolvedValue({ enabled: false });
+    vi.mocked(fake.saveTheme).mockImplementation(() => save.promise);
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    const checkbox = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
+    checkbox.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    checkbox.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    save.resolve({ id: DEFAULT_THEME.id, name: DEFAULT_THEME.name, author: DEFAULT_THEME.author, wallpaperFile: DEFAULT_THEME.wallpaper.file, readOnly: false, surfaceColor: "#f1e2d3", accentColor: "#456789" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.setSkinPersistence).toHaveBeenCalledWith(false);
+    expect(fake.applyTheme).not.toHaveBeenCalled();
+    expect(root.querySelector("[data-role='status']")?.textContent).not.toBe("自动保持皮肤已开启");
+  });
+
+  it("serializes rapid enable-disable-enable persistence intent", async () => {
+    const fake = api();
+    const firstEnable = deferred<{ enabled: boolean }>();
+    vi.mocked(fake.getSkinPersistence).mockResolvedValue({ enabled: false });
+    vi.mocked(fake.setSkinPersistence).mockImplementation((enabled: boolean) => enabled && vi.mocked(fake.setSkinPersistence).mock.calls.length === 1 ? firstEnable.promise : Promise.resolve({ enabled }));
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+    const checkbox = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
+
+    checkbox.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    checkbox.click();
+    checkbox.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fake.setSkinPersistence).toHaveBeenCalledTimes(1);
+
+    firstEnable.resolve({ enabled: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(vi.mocked(fake.setSkinPersistence).mock.calls.map(([enabled]) => enabled)).toEqual([true, false, true]);
+    expect(fake.applyTheme).toHaveBeenCalledOnce();
+    expect(root.querySelector("[data-role='status']")?.textContent).toBe("自动保持皮肤已开启");
+  });
+
+  it("does not enable or apply when restore invalidates a pending save", async () => {
+    const fake = api();
+    const save = deferred<ThemeSummary>();
+    vi.mocked(fake.getSkinPersistence).mockResolvedValue({ enabled: false });
+    vi.mocked(fake.saveTheme).mockImplementation(() => save.promise);
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+    const checkbox = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
+
+    checkbox.click();
+    root.querySelector<HTMLButtonElement>("[data-action='restore']")!.click();
+    save.resolve({ id: DEFAULT_THEME.id, name: DEFAULT_THEME.name, author: DEFAULT_THEME.author, wallpaperFile: DEFAULT_THEME.wallpaper.file, readOnly: false, surfaceColor: "#f1e2d3", accentColor: "#456789" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.restoreOfficial).toHaveBeenCalledOnce();
+    expect(fake.setSkinPersistence).not.toHaveBeenCalledWith(true);
+    expect(fake.applyTheme).not.toHaveBeenCalled();
+  });
+
+  it("does not report persistence enabled when applying the theme fails", async () => {
+    const fake = api();
+    vi.mocked(fake.getSkinPersistence).mockResolvedValue({ enabled: false });
+    vi.mocked(fake.applyTheme).mockResolvedValue({ kind: "error", message: "无法连接" });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    root.querySelector<HTMLInputElement>("[data-action='persistence']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(root.querySelector("[data-role='status']")?.textContent).not.toBe("自动保持皮肤已开启");
+  });
+
+  it("syncs persistence after restoring the official appearance", async () => {
+    const fake = api();
+    vi.mocked(fake.getSkinPersistence)
+      .mockResolvedValueOnce({ enabled: true })
+      .mockResolvedValueOnce({ enabled: false });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    const checkbox = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
+    expect(checkbox.checked).toBe(true);
+    root.querySelector<HTMLButtonElement>("[data-action='restore']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.restoreOfficial).toHaveBeenCalledOnce();
+    expect(fake.getSkinPersistence).toHaveBeenCalledTimes(2);
+    expect(checkbox.checked).toBe(false);
+  });
+
+  it("keeps persistence checked when restoring the official appearance fails", async () => {
+    const fake = api();
+    vi.mocked(fake.restoreOfficial).mockRejectedValue(new Error("restore failed"));
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    const checkbox = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
+    expect(checkbox.checked).toBe(true);
+    root.querySelector<HTMLButtonElement>("[data-action='restore']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.getSkinPersistence).toHaveBeenCalledOnce();
+    expect(checkbox.checked).toBe(true);
+  });
+
   it("explains that temporary disable stops background and startup", async () => {
     const root = document.querySelector<HTMLElement>("#app")!;
     await mountApp(root, api());
