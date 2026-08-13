@@ -96,8 +96,15 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   let wallpaperUrl: string | undefined;
   let wallpaperRequest = 0;
   let wallpaperQueue = Promise.resolve();
+  let persistenceQueue = Promise.resolve();
   let themeLoadRequest = 0;
   let persistenceRequest = 0;
+
+  const enqueuePersistence = (task: () => Promise<void>): Promise<void> => {
+    const next = persistenceQueue.then(task, task);
+    persistenceQueue = next.catch(() => undefined);
+    return next;
+  };
 
   const setStatus = (value: unknown) => { status.textContent = statusLabel(value); };
 
@@ -282,41 +289,41 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     setStatus(await api.applyTheme(id));
   })().catch((error) => setStatus({ kind: "error", error })));
   root.querySelector("[data-action='restore']")!.addEventListener("click", () => {
-    ++persistenceRequest;
-    return void api.restoreOfficial()
-    .then(async () => {
+    const request = ++persistenceRequest;
+    return void enqueuePersistence(async () => {
+      await api.restoreOfficial();
+      if (request !== persistenceRequest) return;
       persistence.checked = (await api.getSkinPersistence()).enabled;
       setStatus({ kind: "not-running" });
-    })
-    .catch((error) => setStatus({ kind: "error", error }));
+    }).catch((error) => setStatus({ kind: "error", error }));
   });
-  persistence.addEventListener("change", () => void (async () => {
+  persistence.addEventListener("change", () => {
     const request = ++persistenceRequest;
-    if (!persistence.checked) {
-      const result = await api.setSkinPersistence(false);
+    const enabledIntent = persistence.checked;
+    void enqueuePersistence(async () => {
+      if (!enabledIntent) {
+        const result = await api.setSkinPersistence(false);
+        if (request !== persistenceRequest) return;
+        persistence.checked = result.enabled;
+        setStatus({ kind: "applied", message: "关闭后不自动恢复" });
+        return;
+      }
+      const saved = await saveDraft();
       if (request !== persistenceRequest) return;
-      persistence.checked = result.enabled;
-      setStatus({ kind: "applied", message: "关闭后不自动恢复" });
-      return;
-    }
-    const saved = await saveDraft();
-    if (request !== persistenceRequest) return;
-    const enabled = await api.setSkinPersistence(true);
-    if (request !== persistenceRequest) {
-      await api.setSkinPersistence(false);
-      return;
-    }
-    persistence.checked = enabled.enabled;
-    if (!enabled.enabled) return;
-    const applied = await api.applyTheme(saved.id);
-    if (request !== persistenceRequest) return;
-    const kind = applied && typeof applied === "object" ? (applied as { kind?: string }).kind : undefined;
-    if (kind === "applied" || kind === "partial") {
-      setStatus({ kind, message: "自动保持皮肤已开启" });
-    } else {
-      setStatus(applied);
-    }
-  })().catch((error) => setStatus({ kind: "error", error })));
+      const enabled = await api.setSkinPersistence(true);
+      if (request !== persistenceRequest) return;
+      persistence.checked = enabled.enabled;
+      if (!enabled.enabled) return;
+      const applied = await api.applyTheme(saved.id);
+      if (request !== persistenceRequest) return;
+      const kind = applied && typeof applied === "object" ? (applied as { kind?: string }).kind : undefined;
+      if (kind === "applied" || kind === "partial") {
+        setStatus({ kind, message: "自动保持皮肤已开启" });
+      } else {
+        setStatus(applied);
+      }
+    }).catch((error) => setStatus({ kind: "error", error }));
+  });
   const saveAutomation = () => void api.setSkinAutomation({
     confirmBeforeRestart: confirmBeforeRestart.checked,
     temporarilyDisabled: temporarilyDisableSkin.checked
