@@ -281,10 +281,25 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     setStatus(await api.applyTheme(id));
   })().catch((error) => setStatus({ kind: "error", error })));
   root.querySelector("[data-action='restore']")!.addEventListener("click", () => void api.restoreOfficial().then(() => setStatus({ kind: "not-running" })));
-  persistence.addEventListener("change", () => void api.setSkinPersistence(persistence.checked).then((result) => {
-    persistence.checked = result.enabled;
-    setStatus({ kind: "applied", message: result.enabled ? "自动保持皮肤已开启" : "关闭后不自动恢复" });
-  }).catch((error) => setStatus({ kind: "error", error })));
+  persistence.addEventListener("change", () => void (async () => {
+    if (!persistence.checked) {
+      const result = await api.setSkinPersistence(false);
+      persistence.checked = result.enabled;
+      setStatus({ kind: "applied", message: "关闭后不自动恢复" });
+      return;
+    }
+    const saved = await saveDraft();
+    const enabled = await api.setSkinPersistence(true);
+    persistence.checked = enabled.enabled;
+    if (!enabled.enabled) return;
+    const applied = await api.applyTheme(saved.id);
+    const kind = applied && typeof applied === "object" ? (applied as { kind?: string }).kind : undefined;
+    if (kind === "applied" || kind === "partial") {
+      setStatus({ kind, message: "自动保持皮肤已开启" });
+    } else {
+      setStatus(applied);
+    }
+  })().catch((error) => setStatus({ kind: "error", error })));
   const saveAutomation = () => void api.setSkinAutomation({
     confirmBeforeRestart: confirmBeforeRestart.checked,
     temporarilyDisabled: temporarilyDisableSkin.checked

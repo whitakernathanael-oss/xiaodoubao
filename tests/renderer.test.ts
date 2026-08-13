@@ -87,6 +87,35 @@ describe("single-window editor", () => {
     expect(fake.applyTheme).toHaveBeenCalledWith(DEFAULT_THEME.id);
   });
 
+  it("saves and reapplies the current theme before enabling persistence", async () => {
+    const fake = api();
+    vi.mocked(fake.getSkinPersistence).mockResolvedValue({ enabled: false });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    root.querySelector<HTMLInputElement>("[data-action='persistence']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.saveTheme).toHaveBeenCalledOnce();
+    expect(fake.setSkinPersistence).toHaveBeenCalledWith(true);
+    expect(fake.applyTheme).toHaveBeenCalledWith(DEFAULT_THEME.id);
+    expect(vi.mocked(fake.setSkinPersistence).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(fake.applyTheme).mock.invocationCallOrder[0]);
+    expect(root.querySelector("[data-role='status']")?.textContent).toBe("自动保持皮肤已开启");
+  });
+
+  it("does not report persistence enabled when applying the theme fails", async () => {
+    const fake = api();
+    vi.mocked(fake.getSkinPersistence).mockResolvedValue({ enabled: false });
+    vi.mocked(fake.applyTheme).mockResolvedValue({ kind: "error", message: "无法连接" });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    root.querySelector<HTMLInputElement>("[data-action='persistence']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(root.querySelector("[data-role='status']")?.textContent).not.toBe("自动保持皮肤已开启");
+  });
+
   it("explains that temporary disable stops background and startup", async () => {
     const root = document.querySelector<HTMLElement>("#app")!;
     await mountApp(root, api());
