@@ -151,10 +151,14 @@ describe("skin guardian", () => {
   it("returns retry and reports when automatic takeover restart throws", async () => {
     const original = new Error("restart failed");
     const reportError = vi.fn(async () => { throw new Error("report failed"); });
+    const launch = vi.fn();
+    const probe = vi.fn()
+      .mockResolvedValueOnce({ kind: "restart-required" as const })
+      .mockResolvedValueOnce({ kind: "stopped" as const });
     const guardian = new SkinGuardian({
       loadState: vi.fn(async () => state),
-      probe: vi.fn(async () => ({ kind: "restart-required" as const })),
-      launch: vi.fn(),
+      probe,
+      launch,
       apply: vi.fn(async () => ({ kind: "applied" as const })),
       shouldRestartRunningDoubao: () => true,
       restartRunningDoubao: vi.fn(async () => { throw original; }),
@@ -164,6 +168,8 @@ describe("skin guardian", () => {
 
     await expect(guardian.runOnce()).resolves.toBe("retry");
     expect(reportError).toHaveBeenCalledWith("guardian-takeover", original);
+    await expect(guardian.runOnce()).resolves.toBe("retry");
+    expect(launch).toHaveBeenCalledWith(state.doubaoExecutable, state.port);
   });
 
   it("clears pending takeover on stop before a stopped probe", async () => {
