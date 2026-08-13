@@ -174,9 +174,13 @@ describe("skin guardian", () => {
     const apply = vi.fn(async () => ({ kind: "applied" as const }));
     const loadState = vi.fn()
       .mockResolvedValueOnce(state)
-      .mockResolvedValueOnce(undefined);
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(state);
+    const probe = vi.fn()
+      .mockResolvedValueOnce({ kind: "restart-required" as const })
+      .mockResolvedValueOnce({ kind: "stopped" as const });
     const guardian = new SkinGuardian({
-      loadState, probe: vi.fn(async () => ({ kind: "restart-required" as const })), launch, apply,
+      loadState, probe, launch, apply,
       shouldRestartRunningDoubao: () => true,
       restartRunningDoubao: vi.fn(async () => false),
       delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
@@ -184,6 +188,7 @@ describe("skin guardian", () => {
 
     await guardian.runOnce();
     await expect(guardian.runOnce()).resolves.toBe("disabled");
+    await expect(guardian.runOnce()).resolves.toBe("waiting-for-doubao");
     expect(launch).not.toHaveBeenCalled();
     expect(apply).not.toHaveBeenCalled();
   });
