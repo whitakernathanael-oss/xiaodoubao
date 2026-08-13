@@ -76,7 +76,7 @@ describe("Doubao adapter", () => {
       appRoot: ["#root"],
       sidebar: ['[data-testid="flow_chat_sidebar"]'],
       chatArea: ['main[data-container-name="main"]'],
-      messageUser: ['[data-testid="send_message"] [data-testid="message_text_content"]'],
+      messageUser: ['[data-testid="send_message"]'],
       messageAssistant: ['[data-testid="receive_message"] [data-testid="message_text_content"]'],
       composer: ["#input-engine-container"],
       buttons: ['button[data-dbx-name="button"]'],
