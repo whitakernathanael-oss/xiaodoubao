@@ -148,6 +148,66 @@ describe("skin guardian", () => {
     await expect(guardian.runOnce()).resolves.toBe("retry");
   });
 
+  it("clears pending takeover on stop before a stopped probe", async () => {
+    const launch = vi.fn();
+    const apply = vi.fn(async () => ({ kind: "applied" as const }));
+    const probe = vi.fn()
+      .mockResolvedValueOnce({ kind: "restart-required" as const })
+      .mockResolvedValueOnce({ kind: "stopped" as const });
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state), probe, launch, apply,
+      shouldRestartRunningDoubao: () => true,
+      restartRunningDoubao: vi.fn(async () => false),
+      delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
+    });
+
+    await guardian.runOnce();
+    guardian.stop();
+    await guardian.start();
+    guardian.stop();
+    expect(launch).not.toHaveBeenCalled();
+    expect(apply).not.toHaveBeenCalled();
+  });
+
+  it("clears pending takeover when active state is deleted", async () => {
+    const launch = vi.fn();
+    const apply = vi.fn(async () => ({ kind: "applied" as const }));
+    const loadState = vi.fn()
+      .mockResolvedValueOnce(state)
+      .mockResolvedValueOnce(undefined);
+    const guardian = new SkinGuardian({
+      loadState, probe: vi.fn(async () => ({ kind: "restart-required" as const })), launch, apply,
+      shouldRestartRunningDoubao: () => true,
+      restartRunningDoubao: vi.fn(async () => false),
+      delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
+    });
+
+    await guardian.runOnce();
+    await expect(guardian.runOnce()).resolves.toBe("disabled");
+    expect(launch).not.toHaveBeenCalled();
+    expect(apply).not.toHaveBeenCalled();
+  });
+
+  it.each(["applied", "partial"] as const)("clears pending takeover after connected %s apply", async (kind) => {
+    const launch = vi.fn();
+    const apply = vi.fn(async () => ({ kind }));
+    const probe = vi.fn()
+      .mockResolvedValueOnce({ kind: "restart-required" as const })
+      .mockResolvedValueOnce({ kind: "connected" as const, targets: [] })
+      .mockResolvedValueOnce({ kind: "stopped" as const });
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state), probe, launch, apply,
+      shouldRestartRunningDoubao: () => true,
+      restartRunningDoubao: vi.fn(async () => false),
+      delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
+    });
+
+    await guardian.runOnce();
+    await expect(guardian.runOnce()).resolves.toBe(kind === "partial" ? "applied" : "applied");
+    await expect(guardian.runOnce()).resolves.toBe("waiting-for-doubao");
+    expect(launch).not.toHaveBeenCalled();
+  });
+
   it("keeps waiting across repeated stopped probes", async () => {
     const { guardian, launch } = guardianWith(["stopped", "stopped"]);
 
