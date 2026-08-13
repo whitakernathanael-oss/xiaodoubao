@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { createApplicationRuntime, type ApplicationRuntime } from "./main/app-services";
 import { registerIpcHandlers } from "./main/ipc-handlers";
+import { migrateShortcuts } from "./main/shortcut-migration";
 
 let mainWindow: BrowserWindow | undefined;
 let runtime: ApplicationRuntime | undefined;
@@ -23,13 +24,23 @@ function handleSquirrelEvent(): boolean {
   } else if (event === "--squirrel-uninstall") {
     commands = [["--removeShortcut", "小豆包.exe"], ["--removeShortcut", "豆包皮肤版.exe"]];
   }
-  for (const args of commands) {
-    try {
-      const child = spawn(updateExe, args, { detached: true, stdio: "ignore", windowsHide: true });
-      child.unref();
-    } catch { /* Shortcut migration is best-effort. */ }
-  }
-  setTimeout(() => app.quit(), 800);
+  const migrateAndQuit = async () => {
+    for (const args of commands) await new Promise<void>((resolve) => {
+      try {
+        const child = spawn(updateExe, args, { detached: true, stdio: "ignore", windowsHide: true });
+        child.once("close", () => resolve());
+        child.once("error", () => resolve());
+        child.unref();
+      } catch { resolve(); }
+    });
+    await migrateShortcuts({
+      desktop: app.getPath("desktop"),
+      startMenu: path.join(app.getPath("appData"), "Microsoft", "Windows", "Start Menu", "Programs")
+    });
+    app.quit();
+  };
+  const fallback = setTimeout(() => app.quit(), 5000);
+  void migrateAndQuit().finally(() => clearTimeout(fallback));
   return true;
 }
 
@@ -77,6 +88,10 @@ function createWindow(): BrowserWindow {
 
 if (!handleSquirrelEvent()) {
   app.whenReady().then(async () => {
+    await migrateShortcuts({
+      desktop: app.getPath("desktop"),
+      startMenu: path.join(app.getPath("appData"), "Microsoft", "Windows", "Start Menu", "Programs")
+    });
     runtime = await createApplicationRuntime();
     if (guardianMode) {
       if (!await runtime.startGuardian()) app.quit();

@@ -53,14 +53,23 @@ describe("Windows package metadata", () => {
     expect(main).toContain('["--removeShortcut", "豆包皮肤版.exe"]');
     expect(main).toContain('["--createShortcut", "小豆包.exe"]');
     expect(main).toContain('["--removeShortcut", "小豆包.exe"], ["--removeShortcut", "豆包皮肤版.exe"]');
-    expect(renderer).toContain("<b>小豆包</b>");
-    expect(renderer).toContain("<small>小豆包</small>");
+    expect(renderer).not.toContain("<b>豆包皮肤版</b>");
+    expect(renderer).not.toContain("<small>豆包皮肤版</small>");
     expect(html).toContain("<title>小豆包</title>");
     expect(defaults).toContain('author: "小豆包"');
     for (const theme of ["clean-light", "glass-blue", "midnight-ink"]) {
       const bundled = JSON.parse(await readFile(path.join(process.cwd(), "assets", "themes", theme, "theme.json"), "utf8"));
       expect(bundled.author).toBe("小豆包");
     }
+  });
+
+  it("wires visible shortcut migration", async () => {
+    const main = await readFile(path.join(process.cwd(), "src", "main.ts"), "utf8");
+    const helper = await readFile(path.join(process.cwd(), "src", "main", "shortcut-migration.ts"), "utf8");
+    expect(main).toContain("migrateShortcuts");
+    expect(helper).toContain("doubao-autoskin.lnk");
+    expect(helper).toContain("豆包皮肤版.lnk");
+    expect(helper).toContain("小豆包.lnk");
   });
 
   it("does not import development inventory code into production", async () => {
