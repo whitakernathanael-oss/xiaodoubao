@@ -291,6 +291,9 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
           await skinState.save({ version: 1, themeId: id, port: settings.port, doubaoExecutable: executable, updatedAt: new Date().toISOString() });
           persistenceActive = true;
           await reconcileBackground(() => guardian.startAlreadyApplied());
+        } else {
+          await removePersistence();
+          return { kind: "error", reason: "doubao-not-found" };
         }
       }
       return result;

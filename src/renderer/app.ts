@@ -281,12 +281,15 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     const id = state.dirty || pendingWallpaper ? (await saveDraft()).id : state.theme.id;
     setStatus(await api.applyTheme(id));
   })().catch((error) => setStatus({ kind: "error", error })));
-  root.querySelector("[data-action='restore']")!.addEventListener("click", () => void api.restoreOfficial()
+  root.querySelector("[data-action='restore']")!.addEventListener("click", () => {
+    ++persistenceRequest;
+    return void api.restoreOfficial()
     .then(async () => {
       persistence.checked = (await api.getSkinPersistence()).enabled;
       setStatus({ kind: "not-running" });
     })
-    .catch((error) => setStatus({ kind: "error", error })));
+    .catch((error) => setStatus({ kind: "error", error }));
+  });
   persistence.addEventListener("change", () => void (async () => {
     const request = ++persistenceRequest;
     if (!persistence.checked) {
@@ -299,7 +302,10 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     const saved = await saveDraft();
     if (request !== persistenceRequest) return;
     const enabled = await api.setSkinPersistence(true);
-    if (request !== persistenceRequest) return;
+    if (request !== persistenceRequest) {
+      await api.setSkinPersistence(false);
+      return;
+    }
     persistence.checked = enabled.enabled;
     if (!enabled.enabled) return;
     const applied = await api.applyTheme(saved.id);
