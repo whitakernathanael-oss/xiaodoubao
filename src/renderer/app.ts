@@ -281,7 +281,12 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     const id = state.dirty || pendingWallpaper ? (await saveDraft()).id : state.theme.id;
     setStatus(await api.applyTheme(id));
   })().catch((error) => setStatus({ kind: "error", error })));
-  root.querySelector("[data-action='restore']")!.addEventListener("click", () => void api.restoreOfficial().then(() => setStatus({ kind: "not-running" })));
+  root.querySelector("[data-action='restore']")!.addEventListener("click", () => void api.restoreOfficial()
+    .then(async () => {
+      persistence.checked = (await api.getSkinPersistence()).enabled;
+      setStatus({ kind: "not-running" });
+    })
+    .catch((error) => setStatus({ kind: "error", error })));
   persistence.addEventListener("change", () => void (async () => {
     const request = ++persistenceRequest;
     if (!persistence.checked) {

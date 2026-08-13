@@ -138,6 +138,39 @@ describe("single-window editor", () => {
     expect(root.querySelector("[data-role='status']")?.textContent).not.toBe("自动保持皮肤已开启");
   });
 
+  it("syncs persistence after restoring the official appearance", async () => {
+    const fake = api();
+    vi.mocked(fake.getSkinPersistence)
+      .mockResolvedValueOnce({ enabled: true })
+      .mockResolvedValueOnce({ enabled: false });
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    const checkbox = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
+    expect(checkbox.checked).toBe(true);
+    root.querySelector<HTMLButtonElement>("[data-action='restore']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.restoreOfficial).toHaveBeenCalledOnce();
+    expect(fake.getSkinPersistence).toHaveBeenCalledTimes(2);
+    expect(checkbox.checked).toBe(false);
+  });
+
+  it("keeps persistence checked when restoring the official appearance fails", async () => {
+    const fake = api();
+    vi.mocked(fake.restoreOfficial).mockRejectedValue(new Error("restore failed"));
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    const checkbox = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
+    expect(checkbox.checked).toBe(true);
+    root.querySelector<HTMLButtonElement>("[data-action='restore']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.getSkinPersistence).toHaveBeenCalledOnce();
+    expect(checkbox.checked).toBe(true);
+  });
+
   it("explains that temporary disable stops background and startup", async () => {
     const root = document.querySelector<HTMLElement>("#app")!;
     await mountApp(root, api());
