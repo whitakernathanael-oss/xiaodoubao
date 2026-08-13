@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 vi.mock("../src/renderer/palette", () => ({ extractPalette: vi.fn() }));
 
 import { mountApp } from "../src/renderer/app";
@@ -107,7 +108,7 @@ describe("single-window editor", () => {
   });
 
   it("ships the neutral responsive workspace styles", () => {
-    const css = readFileSync(new URL("../src/renderer/styles.css", import.meta.url), "utf8");
+    const css = readFileSync(join(process.cwd(), "src/renderer/styles.css"), "utf8");
     expect(css).toContain(".automation-panel");
     expect(css).toContain('[data-role="temporary-disable-help"]');
     expect(css).toContain("@media (max-width: 900px)");
