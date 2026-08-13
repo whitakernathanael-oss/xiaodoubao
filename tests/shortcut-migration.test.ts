@@ -36,8 +36,24 @@ describe("shortcut migration", () => {
     expect(fs.files).toEqual(new Set([path.join(desktop, "小豆包.lnk")]));
   });
 
-  it("swallows missing roots and filesystem failures", async () => {
-    await expect(migrateShortcuts({ desktop: "C:/missing", fs: { ...fakeFs([]), readdir: async () => { throw new Error("EACCES"); } } })).resolves.toBeUndefined();
+  it("swallows Start Menu enumeration failures", async () => {
+    const fs = fakeFs([]);
+    fs.readdir = async () => { throw new Error("EACCES"); };
+    await expect(migrateShortcuts({ startMenu: "C:/Programs", fs })).resolves.toBeUndefined();
+  });
+
+  it("swallows copy failures", async () => {
+    const desktop = "C:/Desktop";
+    const fs = fakeFs([path.join(desktop, "doubao-autoskin.lnk")]);
+    fs.copyFile = async () => { throw new Error("EACCES"); };
+    await expect(migrateShortcuts({ desktop, fs })).resolves.toBeUndefined();
+  });
+
+  it("swallows stale-shortcut unlink failures", async () => {
+    const desktop = "C:/Desktop";
+    const fs = fakeFs([path.join(desktop, "doubao-autoskin.lnk"), path.join(desktop, "小豆包.lnk")]);
+    fs.unlink = async () => { throw new Error("EACCES"); };
+    await expect(migrateShortcuts({ desktop, fs })).resolves.toBeUndefined();
   });
 
   it("does not overwrite a destination that appears during migration", async () => {
