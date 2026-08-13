@@ -132,6 +132,28 @@ describe("single-window editor", () => {
     expect(rule).not.toContain("bottom:");
   });
 
+  it("uses green status only for healthy states", async () => {
+    const fake = api();
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+    const indicator = root.querySelector<HTMLElement>(".topbar__status")!;
+    expect(indicator.dataset.statusKind).toBe("not-running");
+    expect(indicator.querySelector("i")).not.toBeNull();
+    vi.mocked(fake.startDoubao).mockResolvedValue({ kind: "applied" });
+    root.querySelector<HTMLButtonElement>("[data-action='start']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(indicator.dataset.statusKind).toBe("applied");
+  });
+
+  it("separates restore from save and apply actions", async () => {
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, api());
+    expect(root.querySelector(".actionbar__restore [data-action='restore']")).not.toBeNull();
+    expect(root.querySelector(".actionbar__commit [data-action='save']")).not.toBeNull();
+    expect(root.querySelector(".actionbar__commit [data-action='apply']")).not.toBeNull();
+    expect(root.querySelector(".actionbar__restore [data-action='save']")).toBeNull();
+  });
+
   it("shows the selected theme in the topbar and keeps delete in a more menu", async () => {
     const second = { ...structuredClone(DEFAULT_THEME), id: "second", name: "第二主题" };
     const fake = api();

@@ -57,7 +57,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     <div class="app-shell">
       <header class="topbar">
         <div class="wordmark"><span>豆</span><div><b>豆包皮肤版</b><small>Doubao AutoSkin</small></div></div>
-        <div class="topbar__status"><span data-role="current-theme"></span><i></i><span data-role="status">正在检查豆包…</span><details class="more-actions"><summary>更多</summary><button data-action="delete">删除</button></details><button data-action="start">启动 / 连接</button></div>
+        <div class="topbar__status" data-status-kind="connecting"><span data-role="current-theme"></span><i></i><span data-role="status">正在检查豆包…</span><details class="more-actions"><summary>更多</summary><button data-action="delete">删除</button></details><button data-action="start">启动 / 连接</button></div>
       </header>
       <div class="workspace">
         <aside class="theme-panel">
@@ -76,7 +76,8 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
         </aside>
       </div>
       <footer class="actionbar">
-        <div><button data-action="restore" class="danger">恢复官方外观</button><button data-action="save">保存主题</button><button data-action="apply" class="primary">应用到豆包</button></div>
+        <div class="actionbar__restore"><button data-action="restore" class="danger">恢复官方外观</button></div>
+        <div class="actionbar__commit"><button data-action="save">保存主题</button><button data-action="apply" class="primary">应用到豆包</button></div>
       </footer>
     </div>`;
 
@@ -84,6 +85,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   const controls = root.querySelector<HTMLElement>("[data-role='region-controls']")!;
   const preview = root.querySelector<HTMLElement>("[data-role='preview']")!;
   const status = root.querySelector<HTMLElement>("[data-role='status']")!;
+  const statusIndicator = root.querySelector<HTMLElement>(".topbar__status")!;
   const currentTheme = root.querySelector<HTMLElement>("[data-role='current-theme']")!;
   const nameInput = root.querySelector<HTMLInputElement>("[data-role='theme-name']")!;
   const persistence = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
@@ -107,7 +109,13 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     return next;
   };
 
-  const setStatus = (value: unknown) => { status.textContent = statusLabel(value); };
+  const setStatus = (value: unknown) => {
+    status.textContent = statusLabel(value);
+    const kind = value && typeof value === "object" && typeof (value as { kind?: unknown }).kind === "string"
+      ? (value as { kind: string }).kind
+      : "ready";
+    statusIndicator.dataset.statusKind = kind;
+  };
 
   const startOrConnect = async (): Promise<void> => {
     if (temporarilyDisableSkin.checked) { setStatus({ kind: "disabled", message: "皮肤已暂时停用" }); return; }
