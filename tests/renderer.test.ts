@@ -99,8 +99,30 @@ describe("single-window editor", () => {
     expect(fake.saveTheme).toHaveBeenCalledOnce();
     expect(fake.setSkinPersistence).toHaveBeenCalledWith(true);
     expect(fake.applyTheme).toHaveBeenCalledWith(DEFAULT_THEME.id);
+    expect(vi.mocked(fake.saveTheme).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(fake.setSkinPersistence).mock.invocationCallOrder[0]);
     expect(vi.mocked(fake.setSkinPersistence).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(fake.applyTheme).mock.invocationCallOrder[0]);
     expect(root.querySelector("[data-role='status']")?.textContent).toBe("自动保持皮肤已开启");
+  });
+
+  it("ignores an enable that finishes after persistence was disabled", async () => {
+    const fake = api();
+    const save = deferred<ThemeSummary>();
+    vi.mocked(fake.getSkinPersistence).mockResolvedValue({ enabled: false });
+    vi.mocked(fake.saveTheme).mockImplementation(() => save.promise);
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+
+    const checkbox = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
+    checkbox.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    checkbox.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    save.resolve({ id: DEFAULT_THEME.id, name: DEFAULT_THEME.name, author: DEFAULT_THEME.author, wallpaperFile: DEFAULT_THEME.wallpaper.file, readOnly: false, surfaceColor: "#f1e2d3", accentColor: "#456789" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fake.setSkinPersistence).toHaveBeenCalledWith(false);
+    expect(fake.applyTheme).not.toHaveBeenCalled();
+    expect(root.querySelector("[data-role='status']")?.textContent).not.toBe("自动保持皮肤已开启");
   });
 
   it("does not report persistence enabled when applying the theme fails", async () => {
