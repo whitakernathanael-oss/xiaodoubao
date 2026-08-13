@@ -1,10 +1,11 @@
-import { readdir, rename, unlink, lstat } from "node:fs/promises";
+import { readdir, copyFile, unlink, lstat } from "node:fs/promises";
+import { constants } from "node:fs";
 import type { Dirent } from "node:fs";
 import path from "node:path";
 
 export interface ShortcutMigrationFs {
   readdir: (directory: string, options: { withFileTypes: true }) => Promise<Dirent[]>;
-  rename: (oldPath: string, newPath: string) => Promise<void>;
+  copyFile: (oldPath: string, newPath: string, flags?: number) => Promise<void>;
   unlink: (file: string) => Promise<void>;
   lstat: (file: string) => Promise<unknown>;
 }
@@ -15,7 +16,7 @@ export interface ShortcutMigrationOptions {
   fs?: ShortcutMigrationFs;
 }
 
-const defaultFs: ShortcutMigrationFs = { readdir, rename, unlink, lstat };
+const defaultFs: ShortcutMigrationFs = { readdir, copyFile, unlink, lstat };
 const oldNames = ["doubao-autoskin.lnk", "豆包皮肤版.lnk"];
 const newName = "小豆包.lnk";
 
@@ -29,10 +30,12 @@ async function migrateDirectory(directory: string, fs: ShortcutMigrationFs): Pro
       continue;
     }
     try {
-      await fs.lstat(newPath);
+      await fs.copyFile(oldPath, newPath, constants.COPYFILE_EXCL);
       await fs.unlink(oldPath);
-    } catch {
-      try { await fs.rename(oldPath, newPath); } catch { /* best effort */ }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === "EEXIST") {
+        try { await fs.unlink(oldPath); } catch { /* best effort */ }
+      }
     }
   }
 }
@@ -56,5 +59,3 @@ export async function migrateShortcuts(options: ShortcutMigrationOptions): Promi
     for (const directory of await directoriesToMigrate(root, includeNested, fs)) await migrateDirectory(directory, fs);
   }
 }
-
-export const migrateShortcutNames = migrateShortcuts;

@@ -24,18 +24,23 @@ function handleSquirrelEvent(): boolean {
   } else if (event === "--squirrel-uninstall") {
     commands = [["--removeShortcut", "小豆包.exe"], ["--removeShortcut", "豆包皮肤版.exe"]];
   }
-  for (const args of commands) {
-    try {
-      const child = spawn(updateExe, args, { detached: true, stdio: "ignore", windowsHide: true });
-      child.unref();
-    } catch { /* Shortcut migration is best-effort. */ }
-  }
-  setTimeout(() => {
-    void migrateShortcuts({
+  const migrateAndQuit = async () => {
+    for (const args of commands) await new Promise<void>((resolve) => {
+      try {
+        const child = spawn(updateExe, args, { detached: true, stdio: "ignore", windowsHide: true });
+        child.once("close", () => resolve());
+        child.once("error", () => resolve());
+        child.unref();
+      } catch { resolve(); }
+    });
+    await migrateShortcuts({
       desktop: app.getPath("desktop"),
       startMenu: path.join(app.getPath("appData"), "Microsoft", "Windows", "Start Menu", "Programs")
-    }).finally(() => app.quit());
-  }, 800);
+    });
+    app.quit();
+  };
+  const fallback = setTimeout(() => app.quit(), 5000);
+  void migrateAndQuit().finally(() => clearTimeout(fallback));
   return true;
 }
 

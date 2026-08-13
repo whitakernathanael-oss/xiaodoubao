@@ -8,7 +8,7 @@ function fakeFs(files: string[], dirs: string[] = []): ShortcutMigrationFs & { f
     files: state.files,
     readdir: async () => [...state.dirs].map((entry) => ({ name: path.basename(entry), isDirectory: () => true } as never)),
     lstat: async (file) => { if (!state.files.has(file)) throw new Error("ENOENT"); return {}; },
-    rename: async (from, to) => { if (!state.files.delete(from)) throw new Error("ENOENT"); state.files.add(to); },
+    copyFile: async (from, to, flags) => { if (!state.files.has(from)) throw new Error("ENOENT"); if (flags && state.files.has(to)) { const error = new Error("EEXIST") as NodeJS.ErrnoException; error.code = "EEXIST"; throw error; } state.files.add(to); },
     unlink: async (file) => { if (!state.files.delete(file)) throw new Error("ENOENT"); }
   };
 }
@@ -38,5 +38,15 @@ describe("shortcut migration", () => {
 
   it("swallows missing roots and filesystem failures", async () => {
     await expect(migrateShortcuts({ desktop: "C:/missing", fs: { ...fakeFs([]), readdir: async () => { throw new Error("EACCES"); } } })).resolves.toBeUndefined();
+  });
+
+  it("does not overwrite a destination that appears during migration", async () => {
+    const desktop = "C:/Desktop";
+    const oldPath = path.join(desktop, "doubao-autoskin.lnk");
+    const newPath = path.join(desktop, "小豆包.lnk");
+    const fs = fakeFs([oldPath]);
+    fs.copyFile = async () => { fs.files.add(newPath); const error = new Error("EEXIST") as NodeJS.ErrnoException; error.code = "EEXIST"; throw error; };
+    await migrateShortcuts({ desktop, fs });
+    expect(fs.files).toEqual(new Set([newPath]));
   });
 });

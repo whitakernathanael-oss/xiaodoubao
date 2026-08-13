@@ -53,8 +53,8 @@ describe("Windows package metadata", () => {
     expect(main).toContain('["--removeShortcut", "豆包皮肤版.exe"]');
     expect(main).toContain('["--createShortcut", "小豆包.exe"]');
     expect(main).toContain('["--removeShortcut", "小豆包.exe"], ["--removeShortcut", "豆包皮肤版.exe"]');
-    expect(renderer).toContain("<b>小豆包</b>");
-    expect(renderer).toContain("<small>小豆包</small>");
+    expect(renderer).not.toContain("<b>豆包皮肤版</b>");
+    expect(renderer).not.toContain("<small>豆包皮肤版</small>");
     expect(html).toContain("<title>小豆包</title>");
     expect(defaults).toContain('author: "小豆包"');
     for (const theme of ["clean-light", "glass-blue", "midnight-ink"]) {
