@@ -324,7 +324,7 @@ describe("theme injection payloads", () => {
       expect(css).toMatch(/\.dbs-message-assistant \{ background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding-inline: 0 !important;/);
     } finally {
       URL.createObjectURL = originalCreateObjectUrl;
-      URL.revokeObjectUrl = originalRevokeObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
       document.body.innerHTML = "";
     }
   });
