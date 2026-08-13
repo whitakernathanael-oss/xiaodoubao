@@ -310,6 +310,25 @@ describe("theme injection payloads", () => {
     }
   });
 
+  it("keeps user bubbles responsive while restoring native assistant messages", async () => {
+    document.body.innerHTML = '<div id="root"><aside></aside><main>聊天</main></div>';
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    URL.revokeObjectURL = () => undefined;
+    try {
+      await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
+      const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
+
+      expect(css).toMatch(/\.dbs-message-user \{ display: block !important; width: fit-content !important; min-width: min\(280px, 72%\) !important; max-width: min\(72%, 760px\) !important; overflow-wrap: anywhere !important;/);
+      expect(css).toMatch(/\.dbs-message-assistant \{ background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding-inline: 0 !important;/);
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectUrl = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
   it("overrides populated conversation code surfaces and the dark composer fade", async () => {
     document.body.innerHTML = `
       <div id="root">
