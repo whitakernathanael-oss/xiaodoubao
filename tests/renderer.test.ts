@@ -124,6 +124,14 @@ describe("single-window editor", () => {
     expect(css).toContain('.range-control input[type="number"]');
   });
 
+  it("opens the topbar more-actions menu downward inside the app shell", () => {
+    const css = readFileSync(join(process.cwd(), "src/renderer/styles.css"), "utf8");
+    const rule = css.match(/\.more-actions button\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(rule).toContain("top:calc(100% + 4px)");
+    expect(rule).toContain("right:0");
+    expect(rule).not.toContain("bottom:");
+  });
+
   it("shows the selected theme in the topbar and keeps delete in a more menu", async () => {
     const second = { ...structuredClone(DEFAULT_THEME), id: "second", name: "第二主题" };
     const fake = api();

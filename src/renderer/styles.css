@@ -44,7 +44,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .theme-card em { padding: 3px 5px; border-radius: 5px; color: #666; background: #eee; font-size: 8px; font-style: normal; }
 .theme-tools { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; padding-top: 12px; }
 .theme-tools button { padding: 7px 3px; border: 1px solid #e1e1e8; border-radius: 8px; background: #fff; color: #6b6b76; font-size: 10px; }
-.more-actions { position:relative; margin-top:6px; }.topbar .more-actions { margin-top:0; }.more-actions summary { min-height:36px; padding:7px 10px; border:1px solid #e1e1e8; border-radius:8px; background:#fff; color:#6b6b76; font-size:11px; text-align:center; cursor:pointer; list-style:none; }.more-actions button { position:absolute; right:0; bottom:calc(100% + 4px); width:100%; background:#fff; }
+.more-actions { position:relative; margin-top:6px; }.topbar .more-actions { margin-top:0; }.more-actions summary { min-height:36px; padding:7px 10px; border:1px solid #e1e1e8; border-radius:8px; background:#fff; color:#6b6b76; font-size:11px; text-align:center; cursor:pointer; list-style:none; }.more-actions button { position:absolute; right:0; top:calc(100% + 4px); width:100%; background:#fff; }
 
 .stage { display: flex; flex-direction: column; padding: 20px 24px 13px; overflow: hidden; }
 .stage__head { margin-bottom: 14px; }
