@@ -118,13 +118,15 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     createInjector: (session, adapter) => new Injector(session, adapter),
     log
   });
-  const restartRunningDoubao = async (port: number): Promise<boolean> => {
+  const restartRunningDoubao = async (state: import("./skin-state").ActiveSkinState, isCurrent: () => boolean): Promise<boolean> => {
     if (!await closeDoubaoForRestart()) return false;
-    const executable = await existingExecutable(settings.doubaoExecutable);
-    if (!executable) return false;
+    if (!isCurrent()) return false;
+    const executable = state.doubaoExecutable;
     const adapter = await adapterStore.load();
-    launchDoubao(executable, port);
-    return waitForPort(port, adapter);
+    if (!isCurrent()) return false;
+    launchDoubao(executable, state.port);
+    if (!isCurrent()) return false;
+    return waitForPort(state.port, adapter);
   };
   const guardian = new SkinGuardian({
     loadState: () => settings.skinTemporarilyDisabled ? Promise.resolve(undefined) : skinState.load(),
@@ -282,7 +284,9 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
         });
         if (response.response !== 1) return { kind: "restart-required" };
       }
-      return await restartRunningDoubao(port) ? { kind: "connecting" } : { kind: "error", reason: "close-failed" };
+      const active = await skinState.load();
+      if (!active) return { kind: "error", reason: "close-failed" };
+      return await restartRunningDoubao({ ...active, port }, () => true) ? { kind: "connecting" } : { kind: "error", reason: "close-failed" };
     },
     applyTheme: async (id) => {
       if (settings.skinTemporarilyDisabled) return { kind: "disabled", message: "皮肤已暂时停用" };

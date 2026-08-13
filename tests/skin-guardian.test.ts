@@ -110,12 +110,13 @@ describe("skin guardian", () => {
       delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
     });
     await expect(automatic.runOnce()).resolves.toBe("retry");
-    expect(restartRunningDoubao).toHaveBeenCalledWith(9225);
+    expect(restartRunningDoubao).toHaveBeenCalledWith(state, expect.any(Function));
     guardian.stop();
   });
 
   it("recovers a pending takeover when the next probe is stopped", async () => {
     const launch = vi.fn();
+    const reportError = vi.fn();
     const restartRunningDoubao = vi.fn(async () => false);
     const probe = vi.fn()
       .mockResolvedValueOnce({ kind: "restart-required" as const })
@@ -124,16 +125,19 @@ describe("skin guardian", () => {
       loadState: vi.fn(async () => state), probe, launch,
       apply: vi.fn(async () => ({ kind: "applied" as const })),
       shouldRestartRunningDoubao: () => true, restartRunningDoubao,
+      reportError,
       delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
     });
 
-    await expect(guardian.runOnce()).resolves.toBe("waiting-for-restart");
+    await expect(guardian.runOnce()).resolves.toBe("retry");
     await expect(guardian.runOnce()).resolves.toBe("retry");
     expect(launch).toHaveBeenCalledWith(state.doubaoExecutable, state.port);
+    expect(reportError).toHaveBeenCalledWith("guardian-takeover", expect.any(Error));
   });
 
   it("returns retry when pending takeover launch throws", async () => {
     const launch = vi.fn(() => { throw new Error("launch failed"); });
+    const reportError = vi.fn();
     const probe = vi.fn()
       .mockResolvedValueOnce({ kind: "restart-required" as const })
       .mockResolvedValueOnce({ kind: "stopped" as const });
@@ -141,11 +145,13 @@ describe("skin guardian", () => {
       loadState: vi.fn(async () => state), probe, launch,
       apply: vi.fn(async () => ({ kind: "applied" as const })),
       shouldRestartRunningDoubao: () => true, restartRunningDoubao: vi.fn(async () => false),
+      reportError,
       delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
     });
 
     await guardian.runOnce();
     await expect(guardian.runOnce()).resolves.toBe("retry");
+    expect(reportError).toHaveBeenCalledWith("guardian-takeover", expect.any(Error));
   });
 
   it("returns retry and reports when automatic takeover restart throws", async () => {
@@ -287,5 +293,42 @@ describe("skin guardian", () => {
 
     await expect(running).resolves.toBe("disabled");
     expect(rollback).toHaveBeenCalledWith("wallpaper-002");
+  });
+
+  it("reports a scheduled probe rejection and retries, but stop cancels it", async () => {
+    const callbacks: Array<() => void> = [];
+    const delays: number[] = [];
+    const reportError = vi.fn();
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => { throw new Error("load failed"); }),
+      probe: vi.fn(), launch: vi.fn(), apply: vi.fn(), reportError,
+      delay: (milliseconds, callback) => { delays.push(milliseconds); callbacks.push(callback); return setTimeout(() => undefined, 0); }
+    });
+    await guardian.start();
+    expect(reportError).toHaveBeenCalledWith("guardian-takeover", expect.any(Error));
+    expect(delays).toEqual([1_000]);
+    guardian.stop();
+    callbacks.shift()?.();
+    await Promise.resolve();
+    expect(delays).toEqual([1_000]);
+  });
+
+  it("invalidates an in-flight restart before launch", async () => {
+    let release!: (value: boolean) => void;
+    const restart = vi.fn((_state, _isCurrent) => new Promise<boolean>((resolve) => { release = resolve; }));
+    const launch = vi.fn();
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state),
+      probe: vi.fn(async () => ({ kind: "restart-required" as const })),
+      launch, apply: vi.fn(), shouldRestartRunningDoubao: () => true,
+      restartRunningDoubao: restart,
+      delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
+    });
+    const running = guardian.runOnce();
+    await vi.waitFor(() => expect(restart).toHaveBeenCalledOnce());
+    guardian.stop();
+    release(true);
+    await expect(running).resolves.toBe("disabled");
+    expect(launch).not.toHaveBeenCalled();
   });
 });

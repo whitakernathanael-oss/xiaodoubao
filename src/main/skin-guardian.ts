@@ -10,7 +10,7 @@ export interface SkinGuardianDependencies {
   launch(executable: string, port: number): unknown;
   apply(themeId: string, port: number): Promise<WorkflowStatus>;
   shouldRestartRunningDoubao?(): boolean;
-  restartRunningDoubao?(port: number): Promise<boolean>;
+  restartRunningDoubao?(state: ActiveSkinState, isCurrent: () => boolean): Promise<boolean>;
   reportError?(stage: "guardian-takeover", error: unknown): void | Promise<void>;
   rollback?(themeId: string): Promise<void>;
   delay(milliseconds: number, callback: () => void): ReturnType<typeof setTimeout>;
@@ -47,9 +47,15 @@ export class SkinGuardian {
       if (this.dependencies.shouldRestartRunningDoubao?.()) {
         this.takeoverPending = true;
         try {
-          return await this.dependencies.restartRunningDoubao?.(state.port) ? "retry" : "waiting-for-restart";
+          const restarted = await this.dependencies.restartRunningDoubao?.(state, () => this.current(generation));
+          if (!this.current(generation)) return "disabled";
+          if (!restarted) {
+            await this.report(new Error("restart returned false"));
+            return "retry";
+          }
+          return "retry";
         } catch (error) {
-          try { await this.dependencies.reportError?.("guardian-takeover", error); } catch { /* Reporting must not stop recovery. */ }
+          await this.report(error);
           return "retry";
         }
       }
@@ -59,7 +65,12 @@ export class SkinGuardian {
       this.applied = false;
       this.launched = false;
       if (this.takeoverPending) {
-        try { this.dependencies.launch(state.doubaoExecutable, state.port); } catch { /* Retry on the next probe. */ }
+        try {
+          if (!this.current(generation)) return "disabled";
+          this.dependencies.launch(state.doubaoExecutable, state.port);
+        } catch (error) {
+          await this.report(error);
+        }
         return "retry";
       }
       return "waiting-for-doubao";
@@ -102,7 +113,13 @@ export class SkinGuardian {
   }
 
   private async tick(generation: number): Promise<void> {
-    const result = await this.runOnce(generation);
+    let result: GuardianResult;
+    try {
+      result = await this.runOnce(generation);
+    } catch (error) {
+      await this.report(error);
+      result = "retry";
+    }
     if (!this.current(generation) || result === "disabled") return;
     let delay: number;
     if (result === "applied") {
@@ -116,5 +133,9 @@ export class SkinGuardian {
       this.retry = Math.min(this.retry + 1, BACKOFF.length - 1);
     }
     this.timer = this.dependencies.delay(delay, () => { void this.tick(generation); });
+  }
+
+  private async report(error: unknown): Promise<void> {
+    try { await this.dependencies.reportError?.("guardian-takeover", error); } catch { /* Reporting must not stop recovery. */ }
   }
 }
