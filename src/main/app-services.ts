@@ -132,6 +132,11 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     apply: (id, port) => workflow.apply(id, port),
     shouldRestartRunningDoubao: () => !settings.confirmBeforeRestart && !settings.skinTemporarilyDisabled,
     restartRunningDoubao,
+    reportError: (_stage, error) => log.write({
+      stage: "guardian-takeover",
+      errorType: error instanceof Error ? error.name : "unknown",
+      status: "failed"
+    }),
     rollback: (id) => workflow.restoreThemeIfActive(id),
     delay: (milliseconds, callback) => setTimeout(callback, milliseconds),
     cancel: clearTimeout

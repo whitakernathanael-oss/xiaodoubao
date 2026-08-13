@@ -45,6 +45,7 @@ describe("Windows package metadata", () => {
     const source = await readFile(path.join(process.cwd(), "src", "main", "app-services.ts"), "utf8");
     expect(source).toContain('from "./skin-background"');
     expect(source).toContain("reconcileSkinAutomationState(");
+    expect(source).toContain('stage: "guardian-takeover"');
   });
 
   it("disables the heavyweight GPU process before Electron becomes ready", async () => {

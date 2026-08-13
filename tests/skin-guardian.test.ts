@@ -148,6 +148,24 @@ describe("skin guardian", () => {
     await expect(guardian.runOnce()).resolves.toBe("retry");
   });
 
+  it("returns retry and reports when automatic takeover restart throws", async () => {
+    const original = new Error("restart failed");
+    const reportError = vi.fn(async () => { throw new Error("report failed"); });
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state),
+      probe: vi.fn(async () => ({ kind: "restart-required" as const })),
+      launch: vi.fn(),
+      apply: vi.fn(async () => ({ kind: "applied" as const })),
+      shouldRestartRunningDoubao: () => true,
+      restartRunningDoubao: vi.fn(async () => { throw original; }),
+      reportError,
+      delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
+    });
+
+    await expect(guardian.runOnce()).resolves.toBe("retry");
+    expect(reportError).toHaveBeenCalledWith("guardian-takeover", original);
+  });
+
   it("clears pending takeover on stop before a stopped probe", async () => {
     const launch = vi.fn();
     const apply = vi.fn(async () => ({ kind: "applied" as const }));

@@ -11,6 +11,7 @@ export interface SkinGuardianDependencies {
   apply(themeId: string, port: number): Promise<WorkflowStatus>;
   shouldRestartRunningDoubao?(): boolean;
   restartRunningDoubao?(port: number): Promise<boolean>;
+  reportError?(stage: "guardian-takeover", error: unknown): void | Promise<void>;
   rollback?(themeId: string): Promise<void>;
   delay(milliseconds: number, callback: () => void): ReturnType<typeof setTimeout>;
   cancel?(timer: ReturnType<typeof setTimeout>): void;
@@ -45,7 +46,12 @@ export class SkinGuardian {
       this.launched = false;
       if (this.dependencies.shouldRestartRunningDoubao?.()) {
         this.takeoverPending = true;
-        return await this.dependencies.restartRunningDoubao?.(state.port) ? "retry" : "waiting-for-restart";
+        try {
+          return await this.dependencies.restartRunningDoubao?.(state.port) ? "retry" : "waiting-for-restart";
+        } catch (error) {
+          try { await this.dependencies.reportError?.("guardian-takeover", error); } catch { /* Reporting must not stop recovery. */ }
+          return "retry";
+        }
       }
       return "waiting-for-restart";
     }
