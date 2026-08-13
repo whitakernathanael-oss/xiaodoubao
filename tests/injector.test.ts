@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { buildApplyExpression, buildCleanupExpression, buildVerifyExpression } from "../src/main/injector";
 import type { DoubaoAdapter } from "../src/shared/contracts";
 import { DEFAULT_THEME } from "../src/shared/defaults";
@@ -330,6 +332,8 @@ describe("theme injection payloads", () => {
   });
 
   it("targets the outer send_message element for user bubbles", async () => {
+    const shippedAdapter = JSON.parse(readFileSync(path.resolve("assets/adapters/doubao-adapter.json"), "utf8")) as DoubaoAdapter;
+    expect(shippedAdapter.regions.messageUser).toEqual(['[data-testid="send_message"]']);
     const runtimeAdapter = { ...adapter, regions: { ...adapter.regions, messageUser: ['[data-testid="send_message"]'] } };
     document.body.innerHTML = '<div id="root"><aside></aside><main><div data-testid="send_message"><span data-testid="message_text_content">用户消息</span></div></main></div>';
     const originalCreateObjectUrl = URL.createObjectURL;

@@ -48,6 +48,8 @@ describe("single-window editor", () => {
     await mountApp(root, api());
     expect(root.querySelector(".wordmark")).toBeNull();
     expect(root.querySelector<HTMLElement>(".topbar")!.innerHTML).not.toContain("小豆包");
+    const css = readFileSync(join(process.cwd(), "src/renderer/styles.css"), "utf8");
+    expect(css).toMatch(/\.topbar__status\s*\{[^}]*margin-left:\s*auto/);
   });
   beforeEach(() => {
     document.body.innerHTML = '<main id="app"></main>';
