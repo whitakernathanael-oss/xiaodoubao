@@ -27,15 +27,15 @@ describe("Windows release helper", () => {
       packages: { "": { version: string; license?: string } };
     };
 
-    expect(packageJson.version).toBe("0.1.16");
-    expect(packageLock.version).toBe("0.1.16");
-    expect(packageLock.packages[""].version).toBe("0.1.16");
+    expect(packageJson.version).toBe("0.1.17");
+    expect(packageLock.version).toBe("0.1.17");
+    expect(packageLock.packages[""].version).toBe("0.1.17");
     expect(packageLock.packages[""].license).toBe("MIT");
   });
 
   it("publishes the persistent-skin release version", async () => {
     const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8"));
-    expect(packageJson.version).toBe("0.1.16");
+    expect(packageJson.version).toBe("0.1.17");
   });
 
   it("deletes only the project out directory", async () => {
