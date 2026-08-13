@@ -132,6 +132,13 @@ describe("single-window editor", () => {
     expect(rule).not.toContain("bottom:");
   });
 
+  it("keeps theme cards tall enough for their swatch and uses native button geometry", () => {
+    const css = readFileSync(join(process.cwd(), "src/renderer/styles.css"), "utf8");
+    const rule = css.match(/\.theme-card\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(rule).toMatch(/min-height\s*:\s*58px/);
+    expect(rule).toContain("appearance:none");
+  });
+
   it("uses green status only for healthy states", async () => {
     const fake = api();
     const root = document.querySelector<HTMLElement>("#app")!;

@@ -37,7 +37,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .panel-title { padding: 0 5px 15px; }
 .panel-title h2, .stage__head h1 { margin: 2px 0 0; font-size: 18px; }
 .theme-list { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 8px; }
-.theme-card { width: 100%; display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 9px; padding: 9px; border: 1px solid transparent; border-radius: 12px; background: transparent; text-align: left; color: #33333c; }
+.theme-card { width: 100%; min-height: 58px; appearance:none; display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 9px; padding: 9px; border: 1px solid transparent; border-radius: 12px; background: transparent; text-align: left; color: #33333c; }
 .theme-card:hover { background: #fff; }
 .theme-card.is-active { border-color: #202020; background: #fff; box-shadow: 0 5px 18px rgba(46,42,72,.06); }
 .theme-card__swatch { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg,var(--theme-accent),var(--theme-surface)); }
