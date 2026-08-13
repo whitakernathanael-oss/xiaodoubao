@@ -4,7 +4,7 @@ export const DEFAULT_THEME: Theme = {
   formatVersion: 1,
   id: "clean-light",
   name: "Clean Light",
-  author: "Doubao AutoSkin",
+  author: "小豆包",
   wallpaper: {
     file: "wallpaper.png",
     fit: "cover",

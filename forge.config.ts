@@ -7,7 +7,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     name: "doubao-autoskin",
-    executableName: "豆包皮肤版",
+    executableName: "小豆包",
     icon: "assets/icon",
     download: {
       checksums: {
@@ -28,7 +28,7 @@ const config: ForgeConfig = {
   makers: [
     new MakerSquirrel({
       name: "doubao_autoskin",
-      setupExe: "豆包皮肤版-Setup.exe",
+      setupExe: "小豆包-Setup.exe",
       setupIcon: "assets/icon.ico",
       noMsi: true
     }),

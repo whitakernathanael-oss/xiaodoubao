@@ -1,4 +1,5 @@
 import { readFile, stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import config from "../forge.config";
@@ -12,7 +13,7 @@ describe("Windows package metadata", () => {
 
   it("packages the product, icon, themes, and adapter for x64", async () => {
     const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8"));
-    expect(packageJson.productName).toBe("豆包皮肤版");
+    expect(packageJson.productName).toBe("小豆包");
     expect(packageJson.author).toBeTruthy();
     expect(packageJson.scripts.make).toContain("--arch=x64");
     expect(packageJson.scripts["release:win"]).toBe("npm run typecheck && npm test && node tools/release-win.cjs");
@@ -23,13 +24,36 @@ describe("Windows package metadata", () => {
       download?: { checksums?: Record<string, string> };
     };
     expect(packager.name).toBe("doubao-autoskin");
-    expect(packager.executableName).toBe("豆包皮肤版");
+    expect(packager.executableName).toBe("小豆包");
     expect(packager.icon).toContain("assets/icon");
     expect(packager.extraResource).toEqual(expect.arrayContaining(["assets/themes", "assets/adapters"]));
     expect(packager.download?.checksums).toEqual({
       "electron-v43.3.0-win32-x64.zip": "18528bedc6a9b04bdc5efb7b803cbc3cb0e5ea6415d54046e23d464d89a00da9"
     });
-    expect((await stat(path.join(process.cwd(), "assets", "icon.ico"))).size).toBeGreaterThan(1000);
+    const icon = await readFile(path.join(process.cwd(), "assets", "icon.ico"));
+    expect((await stat(path.join(process.cwd(), "assets", "icon.ico"))).size).toBe(76252);
+    expect(Array.from(icon.subarray(0, 4))).toEqual([0, 0, 1, 0]);
+    expect(createHash("sha256").update(icon).digest("hex")).toBe("6d04fdbdb198042c61b6d0da5eac370906d3ec8177fc17a387a8805945be926d");
+    const forgeSource = await readFile(path.join(process.cwd(), "forge.config.ts"), "utf8");
+    expect(forgeSource).toContain('name: "doubao_autoskin"');
+    expect(forgeSource).toContain('setupExe: "小豆包-Setup.exe"');
+  });
+
+  it("uses 小豆包 for visible branding while retaining internal identifiers", async () => {
+    const main = await readFile(path.join(process.cwd(), "src", "main.ts"), "utf8");
+    const renderer = await readFile(path.join(process.cwd(), "src", "renderer", "app.ts"), "utf8");
+    const html = await readFile(path.join(process.cwd(), "src", "renderer", "index.html"), "utf8");
+    const defaults = await readFile(path.join(process.cwd(), "src", "shared", "defaults.ts"), "utf8");
+    expect(main).toContain('icon: path.join(app.getAppPath(), "assets", "icon.ico")');
+    expect(main).toContain('title: "小豆包"');
+    expect(main).toContain('title: "退出小豆包"');
+    expect(main).toContain('dialog.showErrorBox("小豆包启动失败"');
+    expect(main).toContain("豆包皮肤版.exe");
+    expect(main).toContain("小豆包.exe");
+    expect(renderer).toContain("<b>小豆包</b>");
+    expect(renderer).toContain("<small>小豆包</small>");
+    expect(html).toContain("<title>小豆包</title>");
+    expect(defaults).toContain('author: "小豆包"');
   });
 
   it("does not import development inventory code into production", async () => {

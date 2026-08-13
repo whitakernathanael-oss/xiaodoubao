@@ -17,18 +17,17 @@ function handleSquirrelEvent(): boolean {
   if (!event?.startsWith("--squirrel-")) return false;
   const applicationFolder = path.dirname(process.execPath);
   const updateExe = path.resolve(applicationFolder, "..", "Update.exe");
-  const executableName = path.basename(process.execPath);
-  let args: string[] | undefined;
+  let commands: string[][] = [];
   if (event === "--squirrel-install" || event === "--squirrel-updated") {
-    args = ["--createShortcut", executableName];
+    commands = [["--removeShortcut", "豆包皮肤版.exe"], ["--createShortcut", "小豆包.exe"]];
   } else if (event === "--squirrel-uninstall") {
-    args = ["--removeShortcut", executableName];
+    commands = [["--removeShortcut", "小豆包.exe"], ["--removeShortcut", "豆包皮肤版.exe"]];
   }
-  if (args) {
+  for (const args of commands) {
     try {
       const child = spawn(updateExe, args, { detached: true, stdio: "ignore", windowsHide: true });
       child.unref();
-    } catch { /* Squirrel will report installer failure. */ }
+    } catch { /* Shortcut migration is best-effort. */ }
   }
   setTimeout(() => app.quit(), 800);
   return true;
@@ -40,7 +39,8 @@ function createWindow(): BrowserWindow {
     height: 720,
     minWidth: 760,
     minHeight: 560,
-    title: "豆包皮肤版",
+    title: "小豆包",
+    icon: path.join(app.getAppPath(), "assets", "icon.ico"),
     backgroundColor: "#efeff3",
     webPreferences: {
       contextIsolation: true,
@@ -64,7 +64,7 @@ function createWindow(): BrowserWindow {
     if (!runtime?.workflow.hasActiveSessions()) return;
     const choice = dialog.showMessageBoxSync(window, {
       type: "question",
-      title: "退出豆包皮肤版",
+      title: "退出小豆包",
       message: "退出后豆包页面重新加载时不会自动恢复皮肤。仍要退出吗？",
       buttons: ["取消", "仍要退出"],
       defaultId: 0,
@@ -89,7 +89,7 @@ if (!handleSquirrelEvent()) {
       else { mainWindow.show(); mainWindow.focus(); }
     });
   }).catch((error) => {
-    dialog.showErrorBox("豆包皮肤版启动失败", error instanceof Error ? error.message : String(error));
+    dialog.showErrorBox("小豆包启动失败", error instanceof Error ? error.message : String(error));
     app.quit();
   });
 }

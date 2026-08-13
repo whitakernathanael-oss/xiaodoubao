@@ -56,7 +56,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   root.innerHTML = `
     <div class="app-shell">
       <header class="topbar">
-        <div class="wordmark"><span>豆</span><div><b>豆包皮肤版</b><small>Doubao AutoSkin</small></div></div>
+        <div class="wordmark"><span>小</span><div><b>小豆包</b><small>小豆包</small></div></div>
         <div class="topbar__status" data-status-kind="connecting"><span data-role="current-theme"></span><i></i><span data-role="status">正在检查豆包…</span><details class="more-actions"><summary>更多</summary><button data-action="delete">删除</button></details><button data-action="start">启动 / 连接</button></div>
       </header>
       <div class="workspace">
