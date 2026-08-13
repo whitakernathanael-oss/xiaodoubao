@@ -27,15 +27,15 @@ describe("Windows release helper", () => {
       packages: { "": { version: string; license?: string } };
     };
 
-    expect(packageJson.version).toBe("0.1.19");
-    expect(packageLock.version).toBe("0.1.19");
-    expect(packageLock.packages[""].version).toBe("0.1.19");
+    expect(packageJson.version).toBe("0.1.20");
+    expect(packageLock.version).toBe("0.1.20");
+    expect(packageLock.packages[""].version).toBe("0.1.20");
     expect(packageLock.packages[""].license).toBe("MIT");
   });
 
   it("publishes the persistent-skin release version", async () => {
     const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8"));
-    expect(packageJson.version).toBe("0.1.19");
+    expect(packageJson.version).toBe("0.1.20");
   });
 
   it("deletes only the project out directory", async () => {
@@ -51,8 +51,8 @@ describe("Windows release helper", () => {
 
   it("resolves the Setup and portable executable paths", () => {
     expect(artifactPaths("C:\\project")).toEqual({
-      setup: path.resolve("C:\\project", "out/make/squirrel.windows/x64/豆包皮肤版-Setup.exe"),
-      portable: path.resolve("C:\\project", "out/doubao-autoskin-win32-x64/豆包皮肤版.exe")
+      setup: path.resolve("C:\\project", "out/make/squirrel.windows/x64/小豆包-Setup.exe"),
+      portable: path.resolve("C:\\project", "out/doubao-autoskin-win32-x64/小豆包.exe")
     });
   });
 

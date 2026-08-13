@@ -19,8 +19,8 @@ function removeOldOutput(projectRoot) {
 
 function artifactPaths(projectRoot) {
   return {
-    setup: path.resolve(projectRoot, "out/make/squirrel.windows/x64/豆包皮肤版-Setup.exe"),
-    portable: path.resolve(projectRoot, "out/doubao-autoskin-win32-x64/豆包皮肤版.exe")
+    setup: path.resolve(projectRoot, "out/make/squirrel.windows/x64/小豆包-Setup.exe"),
+    portable: path.resolve(projectRoot, "out/doubao-autoskin-win32-x64/小豆包.exe")
   };
 }
 
@@ -50,7 +50,7 @@ function main() {
   for (const file of Object.values(artifacts)) {
     if (!existsSync(file)) throw new Error(`Release artifact is missing: ${file}`);
   }
-  console.log(`豆包皮肤版 v${packageJson.version}`);
+  console.log(`小豆包 v${packageJson.version}`);
   console.log(`Setup: ${artifacts.setup}`);
   console.log(`Portable: ${artifacts.portable}`);
 }
