@@ -63,6 +63,15 @@ describe("Windows package metadata", () => {
     }
   });
 
+  it("wires visible shortcut migration", async () => {
+    const main = await readFile(path.join(process.cwd(), "src", "main.ts"), "utf8");
+    const helper = await readFile(path.join(process.cwd(), "src", "main", "shortcut-migration.ts"), "utf8");
+    expect(main).toContain("migrateShortcuts");
+    expect(helper).toContain("doubao-autoskin.lnk");
+    expect(helper).toContain("豆包皮肤版.lnk");
+    expect(helper).toContain("小豆包.lnk");
+  });
+
   it("does not import development inventory code into production", async () => {
     const productionFiles = [
       "src/main.ts", "src/preload.ts", "src/main/app-services.ts", "src/main/workflow.ts"

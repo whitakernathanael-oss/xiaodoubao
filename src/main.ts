@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { createApplicationRuntime, type ApplicationRuntime } from "./main/app-services";
 import { registerIpcHandlers } from "./main/ipc-handlers";
+import { migrateShortcuts } from "./main/shortcut-migration";
 
 let mainWindow: BrowserWindow | undefined;
 let runtime: ApplicationRuntime | undefined;
@@ -29,7 +30,12 @@ function handleSquirrelEvent(): boolean {
       child.unref();
     } catch { /* Shortcut migration is best-effort. */ }
   }
-  setTimeout(() => app.quit(), 800);
+  setTimeout(() => {
+    void migrateShortcuts({
+      desktop: app.getPath("desktop"),
+      startMenu: path.join(app.getPath("appData"), "Microsoft", "Windows", "Start Menu", "Programs")
+    }).finally(() => app.quit());
+  }, 800);
   return true;
 }
 
@@ -77,6 +83,10 @@ function createWindow(): BrowserWindow {
 
 if (!handleSquirrelEvent()) {
   app.whenReady().then(async () => {
+    await migrateShortcuts({
+      desktop: app.getPath("desktop"),
+      startMenu: path.join(app.getPath("appData"), "Microsoft", "Windows", "Start Menu", "Programs")
+    });
     runtime = await createApplicationRuntime();
     if (guardianMode) {
       if (!await runtime.startGuardian()) app.quit();
