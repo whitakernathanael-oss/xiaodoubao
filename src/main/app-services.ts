@@ -13,6 +13,7 @@ import {
 } from "./doubao-launcher";
 import { Injector } from "./injector";
 import { PrivacyLog } from "./log";
+import { guardianTakeoverFailure } from "./guardian-takeover-log";
 import { resolveBundledPaths, resolveDataPaths } from "./paths";
 import { ThemeArchive } from "./theme-archive";
 import { ThemeStore } from "./theme-store";
@@ -132,11 +133,7 @@ export async function createApplicationRuntime(): Promise<ApplicationRuntime> {
     apply: (id, port) => workflow.apply(id, port),
     shouldRestartRunningDoubao: () => !settings.confirmBeforeRestart && !settings.skinTemporarilyDisabled,
     restartRunningDoubao,
-    reportError: (_stage, error) => log.write({
-      stage: "guardian-takeover",
-      errorType: error instanceof Error ? error.name : "unknown",
-      status: "failed"
-    }),
+    reportError: (_stage, error) => log.write(guardianTakeoverFailure(error)),
     rollback: (id) => workflow.restoreThemeIfActive(id),
     delay: (milliseconds, callback) => setTimeout(callback, milliseconds),
     cancel: clearTimeout

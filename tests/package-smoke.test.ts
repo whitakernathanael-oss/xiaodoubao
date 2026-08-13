@@ -43,13 +43,15 @@ describe("Windows package metadata", () => {
 
   it("wires skin background coordination into the application runtime", async () => {
     const source = await readFile(path.join(process.cwd(), "src", "main", "app-services.ts"), "utf8");
+    const helper = await readFile(path.join(process.cwd(), "src", "main", "guardian-takeover-log.ts"), "utf8");
     expect(source).toContain('from "./skin-background"');
     expect(source).toContain("reconcileSkinAutomationState(");
     const guardianBinding = source.slice(source.indexOf("const guardian = new SkinGuardian({"), source.indexOf("const manageStartup", source.indexOf("const guardian = new SkinGuardian({")));
     expect(guardianBinding).toContain("reportError:");
-    expect(guardianBinding).toContain('stage: "guardian-takeover"');
-    expect(guardianBinding).toContain('errorType: error instanceof Error ? error.name : "unknown"');
-    expect(guardianBinding).toContain('status: "failed"');
+    expect(guardianBinding).toContain("guardianTakeoverFailure(error)");
+    expect(helper).toContain('stage: "guardian-takeover"');
+    expect(helper).toContain('errorType: error instanceof Error ? error.name : "unknown"');
+    expect(helper).toContain('status: "failed"');
     expect(guardianBinding).not.toContain("targetUrl");
     expect(guardianBinding).not.toContain("themeId");
     expect(guardianBinding).not.toContain("doubaoExecutable");
