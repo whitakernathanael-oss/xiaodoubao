@@ -68,6 +68,10 @@ export class SkinGuardian {
       this.applied = false;
       this.launched = false;
       if (this.takeoverPending) {
+        if (!this.dependencies.shouldRestartRunningDoubao?.()) {
+          this.takeoverPending = false;
+          return "waiting-for-doubao";
+        }
         try {
           if (!this.current(generation)) return "disabled";
           this.dependencies.launch(state.doubaoExecutable, state.port);

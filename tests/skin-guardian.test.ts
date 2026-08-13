@@ -352,4 +352,25 @@ describe("skin guardian", () => {
     await expect(guardian.runOnce()).resolves.toBe("retry");
     expect(lifecycleCheck()).toBe(false);
   });
+
+  it("does not launch a pending takeover after policy is disabled", async () => {
+    let policy = true;
+    const launch = vi.fn();
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state),
+      probe: vi.fn()
+        .mockResolvedValueOnce({ kind: "restart-required" as const })
+        .mockResolvedValueOnce({ kind: "stopped" as const }),
+      launch,
+      apply: vi.fn(async () => ({ kind: "applied" as const })),
+      shouldRestartRunningDoubao: () => policy,
+      restartRunningDoubao: vi.fn(async () => false),
+      delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
+    });
+
+    await expect(guardian.runOnce()).resolves.toBe("retry");
+    policy = false;
+    await expect(guardian.runOnce()).resolves.toBe("waiting-for-doubao");
+    expect(launch).not.toHaveBeenCalled();
+  });
 });
