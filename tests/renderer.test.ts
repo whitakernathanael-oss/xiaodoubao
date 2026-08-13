@@ -116,6 +116,39 @@ describe("single-window editor", () => {
     expect(css).not.toContain("#7257df");
     expect(css).not.toContain("#8a62de");
     expect(css).not.toContain(".panel-title > button");
+    expect(css).toContain(":focus-visible");
+    expect(css).toContain("::selection");
+    expect(css).toContain("scrollbar");
+  });
+
+  it("shows the selected theme in the topbar and keeps delete in a more menu", async () => {
+    const second = { ...structuredClone(DEFAULT_THEME), id: "second", name: "第二主题" };
+    const fake = api();
+    vi.mocked(fake.listThemes).mockResolvedValue([
+      { id: DEFAULT_THEME.id, name: DEFAULT_THEME.name, author: DEFAULT_THEME.author, wallpaperFile: DEFAULT_THEME.wallpaper.file, readOnly: false, surfaceColor: "#f1e2d3", accentColor: "#456789" },
+      { id: second.id, name: second.name, author: second.author, wallpaperFile: second.wallpaper.file, readOnly: false, surfaceColor: "#eee", accentColor: "#123" }
+    ]);
+    vi.mocked(fake.loadTheme).mockImplementation(async (id) => id === second.id ? structuredClone(second) : structuredClone(DEFAULT_THEME));
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+    expect(root.querySelector("[data-role='current-theme']")?.textContent).toContain(DEFAULT_THEME.name);
+    expect(root.querySelector(".theme-tools [data-action='delete']")).toBeNull();
+    expect(root.querySelector("details [data-action='delete']")).not.toBeNull();
+    root.querySelector<HTMLButtonElement>("[data-theme-id='second']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(root.querySelector("[data-role='current-theme']")?.textContent).toContain("第二主题");
+    root.querySelector<HTMLButtonElement>("details [data-action='delete']")!.click();
+    expect(fake.deleteTheme).toHaveBeenCalledWith(second.id);
+  });
+
+  it("persists relocated automation settings", async () => {
+    const fake = api();
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, fake);
+    root.querySelector<HTMLInputElement>("[data-action='confirm-before-restart']")!.click();
+    root.querySelector<HTMLInputElement>("[data-action='temporarily-disable-skin']")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fake.setSkinAutomation).toHaveBeenLastCalledWith({ confirmBeforeRestart: false, temporarilyDisabled: true });
   });
 
   it("saves and reapplies the current theme before enabling persistence", async () => {

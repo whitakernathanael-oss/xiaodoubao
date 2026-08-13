@@ -57,13 +57,13 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
     <div class="app-shell">
       <header class="topbar">
         <div class="wordmark"><span>豆</span><div><b>豆包皮肤版</b><small>Doubao AutoSkin</small></div></div>
-        <div class="topbar__status"><i></i><span data-role="status">正在检查豆包…</span><button data-action="start">启动 / 连接</button></div>
+        <div class="topbar__status"><span data-role="current-theme"></span><i></i><span data-role="status">正在检查豆包…</span><button data-action="start">启动 / 连接</button></div>
       </header>
       <div class="workspace">
         <aside class="theme-panel">
           <div class="panel-title"><div><small>THEMES</small><h2>主题</h2></div></div>
           <div class="theme-list" data-role="themes"></div>
-          <div class="theme-tools"><button data-action="import">导入 ZIP</button><button data-action="export">导出</button><button data-action="delete">删除</button></div>
+          <div class="theme-tools"><button data-action="import">导入 ZIP</button><button data-action="export">导出</button></div><details class="more-actions"><summary>更多</summary><button data-action="delete">删除</button></details>
         </aside>
         <main class="stage">
           <div class="stage__head"><div><small>LIVE PREVIEW</small><h1>本地效果预览</h1></div><div class="preview-tabs"><button class="is-active" data-preview-page="chat">聊天</button><button data-preview-page="settings">设置</button></div></div>
@@ -84,6 +84,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
   const controls = root.querySelector<HTMLElement>("[data-role='region-controls']")!;
   const preview = root.querySelector<HTMLElement>("[data-role='preview']")!;
   const status = root.querySelector<HTMLElement>("[data-role='status']")!;
+  const currentTheme = root.querySelector<HTMLElement>("[data-role='current-theme']")!;
   const nameInput = root.querySelector<HTMLInputElement>("[data-role='theme-name']")!;
   const persistence = root.querySelector<HTMLInputElement>("[data-action='persistence']")!;
   const confirmBeforeRestart = root.querySelector<HTMLInputElement>("[data-action='confirm-before-restart']")!;
@@ -187,6 +188,7 @@ export async function mountApp(root: HTMLElement, api: DoubaoSkinApi): Promise<v
 
   const render = (): void => {
     nameInput.value = state.theme.name;
+    currentTheme.textContent = `当前：${state.theme.name}`;
     renderThemeList();
     renderControls();
     renderPreview(preview, state.theme, previewPage, wallpaperUrl);
