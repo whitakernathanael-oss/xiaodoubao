@@ -331,4 +331,25 @@ describe("skin guardian", () => {
     await expect(running).resolves.toBe("disabled");
     expect(launch).not.toHaveBeenCalled();
   });
+
+  it("invalidates an in-flight restart when takeover policy changes", async () => {
+    let policy = true;
+    let lifecycleCheck!: () => boolean;
+    const restart = vi.fn(async (_state, check: () => boolean) => {
+      lifecycleCheck = check;
+      policy = false;
+      return check();
+    });
+    const guardian = new SkinGuardian({
+      loadState: vi.fn(async () => state),
+      probe: vi.fn(async () => ({ kind: "restart-required" as const })),
+      launch: vi.fn(), apply: vi.fn(),
+      shouldRestartRunningDoubao: () => policy,
+      restartRunningDoubao: restart,
+      delay: (milliseconds, callback) => setTimeout(callback, milliseconds)
+    });
+
+    await expect(guardian.runOnce()).resolves.toBe("retry");
+    expect(lifecycleCheck()).toBe(false);
+  });
 });

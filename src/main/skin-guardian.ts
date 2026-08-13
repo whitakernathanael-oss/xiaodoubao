@@ -47,7 +47,10 @@ export class SkinGuardian {
       if (this.dependencies.shouldRestartRunningDoubao?.()) {
         this.takeoverPending = true;
         try {
-          const restarted = await this.dependencies.restartRunningDoubao?.(state, () => this.current(generation));
+          const restarted = await this.dependencies.restartRunningDoubao?.(
+            state,
+            () => this.current(generation) && Boolean(this.dependencies.shouldRestartRunningDoubao?.())
+          );
           if (!this.current(generation)) return "disabled";
           if (!restarted) {
             await this.report(new Error("restart returned false"));
