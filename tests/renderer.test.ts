@@ -43,6 +43,12 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 }
 
 describe("single-window editor", () => {
+  it("removes the wordmark while keeping topbar controls right-aligned", async () => {
+    const root = document.querySelector<HTMLElement>("#app")!;
+    await mountApp(root, api());
+    expect(root.querySelector(".wordmark")).toBeNull();
+    expect(root.querySelector<HTMLElement>(".topbar")!.innerHTML).not.toContain("小豆包");
+  });
   beforeEach(() => {
     document.body.innerHTML = '<main id="app"></main>';
     vi.mocked(extractPalette).mockResolvedValue({

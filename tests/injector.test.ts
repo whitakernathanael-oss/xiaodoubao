@@ -320,11 +320,26 @@ describe("theme injection payloads", () => {
       await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
       const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
 
-      expect(css).toMatch(/\.dbs-message-user \{ display: block !important; width: fit-content !important; min-width: min\(280px, 72%\) !important; max-width: min\(72%, 760px\) !important; overflow-wrap: anywhere !important;/);
+      expect(css).toMatch(/\.dbs-message-user \{ display: block !important; width: fit-content !important; min-width: min\(360px, 72%\) !important; max-width: min\(72%, 760px\) !important; overflow-wrap: anywhere !important;/);
       expect(css).toMatch(/\.dbs-message-assistant \{ background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding-inline: 0 !important;/);
     } finally {
       URL.createObjectURL = originalCreateObjectUrl;
       URL.revokeObjectURL = originalRevokeObjectUrl;
+      document.body.innerHTML = "";
+    }
+  });
+
+  it("targets the outer send_message element for user bubbles", async () => {
+    const runtimeAdapter = { ...adapter, regions: { ...adapter.regions, messageUser: ['[data-testid="send_message"]'] } };
+    document.body.innerHTML = '<div id="root"><aside></aside><main><div data-testid="send_message"><span data-testid="message_text_content">用户消息</span></div></main></div>';
+    const originalCreateObjectUrl = URL.createObjectURL;
+    URL.createObjectURL = () => "blob:wallpaper";
+    try {
+      await new Function(`return ${buildApplyExpression(DEFAULT_THEME, runtimeAdapter, "data:image/png;base64,AA==", "")}`)();
+      expect(document.querySelector('[data-testid="send_message"]')!.classList.contains("dbs-message-user")).toBe(true);
+      expect(document.querySelector('[data-testid="message_text_content"]')!.classList.contains("dbs-message-user")).toBe(false);
+    } finally {
+      URL.createObjectURL = originalCreateObjectUrl;
       document.body.innerHTML = "";
     }
   });
