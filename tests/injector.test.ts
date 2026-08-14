@@ -322,9 +322,7 @@ describe("theme injection payloads", () => {
       await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
       const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
 
-      expect(css).not.toMatch(/html\.doubao-skin \.dbs-message-user \{/);
-      expect(css).not.toContain('.dbs-message-user {');
-      expect(css).not.toContain('.dbs-message-user [data-testid="message_text_content"] {');
+      expect(css.match(/\.dbs-message-user\b/g) ?? []).toHaveLength(0);
       expect(css).toMatch(/\.dbs-message-assistant \{ background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding-inline: 0 !important;/);
     } finally {
       URL.createObjectURL = originalCreateObjectUrl;
