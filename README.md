@@ -24,8 +24,6 @@
 - 可替换的单一豆包页面适配器
 - 一键应用与恢复官方外观
 
-不包含 GIF/视频、云同步、账号、付费、主题商城、遥测、托盘守护程序或自动适配器更新。私人定制主题与免费主题使用完全相同的开放格式。
-
 ## 从源码运行
 
 ```powershell
@@ -63,15 +61,7 @@ npm run make
 
 ## 主题与 ZIP
 
-用户主题保存在 `%LOCALAPPDATA%\DoubaoSkin\themes\`。导入和导出使用普通 `.zip`；同名主题自动添加 `-2`、`-3` 后缀。
-
-开发者和 Agent 请阅读：
-
-- [主题格式](docs/theme-format.md)
-- [Agent 主题制作指南](docs/agent-theme-guide.md)
-- [豆包适配器](docs/doubao-adapter.md)
-
-主题包不能包含 JavaScript、HTML、字体、可执行文件、远程资源或嵌套压缩包。可选 `extra.css` 必须锚定主题作用域。
+暂未开放
 
 ## 已知限制
 
