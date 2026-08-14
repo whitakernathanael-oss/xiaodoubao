@@ -322,7 +322,7 @@ describe("theme injection payloads", () => {
       await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
       const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
 
-      expect(css).toMatch(/\.dbs-message-user \{\s*\}/);
+      expect(css).not.toMatch(/html\.doubao-skin \.dbs-message-user \{/);
       expect(css).toMatch(/\.dbs-message-user \[data-testid="message_text_content"\] \{ background: color-mix\(in srgb, var\(--dbs-contrast-base\) var\(--dbs-chat-safety-mix\), var\(--dbs-user-bubble\)\) !important; color: inherit !important; border-color: var\(--dbs-chat-border\) !important; \}/);
       expect(css).not.toMatch(/\.dbs-message-user \{[^}]*\b(?:display|width|min-width|max-width|overflow-wrap|background|border|border-radius|box-shadow|padding|margin|align|position)\b/);
       expect(css).toMatch(/\.dbs-message-assistant \{ background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding-inline: 0 !important;/);

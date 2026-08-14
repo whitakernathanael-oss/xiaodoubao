@@ -252,7 +252,6 @@ html.doubao-skin .dbs-sidebar { background: color-mix(in srgb, var(--dbs-sidebar
 html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"] { background: transparent !important; }
 html.doubao-skin .dbs-sidebar [data-testid="sidebar-section-item"]:is(:hover, :focus-within) { background: color-mix(in srgb, var(--dbs-sidebar-selected) 34%, transparent) !important; }
 html.doubao-skin .dbs-sidebar :is([aria-selected="true"], [aria-current]:not([aria-current="false"]), [data-state="active"], [data-active="true"], [class~="!bg-dbx-bg-float"]) { background: color-mix(in srgb, var(--dbs-sidebar-selected) 44%, transparent) !important; }
-html.doubao-skin .dbs-message-user { }
 html.doubao-skin .dbs-message-user [data-testid="message_text_content"] { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-chat-safety-mix), var(--dbs-user-bubble)) !important; color: inherit !important; border-color: var(--dbs-chat-border) !important; }
 html.doubao-skin .dbs-message-assistant { background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding-inline: 0 !important; }
 html.doubao-skin :is(.dbs-composer, .dbs-composer-surface) { background: color-mix(in srgb, var(--dbs-contrast-base) var(--dbs-composer-safety-mix), var(--dbs-composer-bg)) !important; border: 1px solid var(--dbs-composer-border) !important; border-radius: var(--dbs-composer-radius) !important; }
