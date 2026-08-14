@@ -26,9 +26,9 @@
 
 ## 从源码运行
 
-```powershell
-git clone <仓库地址> doubao_autoskin
-cd doubao_autoskin
+```bash
+git clone https://github.com/whitakernathanael-oss/xiaodoubao.git xiaodoubao
+cd xiaodoubao
 npm install
 npm run start
 ```
