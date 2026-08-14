@@ -50,7 +50,9 @@ describe("preview readability", () => {
     renderPreview(root, DEFAULT_THEME, "chat");
     const css = readFileSync(path.resolve("src/renderer/styles.css"), "utf8");
 
-    expect(css).toMatch(/\.preview__user p\s*\{[^}]*display:block;[^}]*width:fit-content;[^}]*min-width:min\(360px,72%\);[^}]*max-width:min\(72%,760px\);[^}]*overflow-wrap:anywhere;/);
+    expect(css).toMatch(/\.preview__user\s*\{\s*justify-content:flex-end;\s*\}/);
+    expect(css).toMatch(/\.preview__user p\s*\{[^}]*background:color-mix\(in srgb,var\(--p-contrast-base\) var\(--p-chat-safety-mix\),var\(--p-user\)\);[^}]*color:inherit;[^}]*border-color:var\(--p-chat-border\);/);
+    expect(css).not.toMatch(/\.preview__user p\s*\{[^}]*\b(?:display|width|min-width|max-width|overflow-wrap|padding|margin|border-radius|box-shadow)\s*:/);
     expect(css).toMatch(/\.preview__assistant p\s*\{[^}]*background:transparent !important;[^}]*border:0 !important;[^}]*border-radius:0 !important;[^}]*box-shadow:none !important;[^}]*padding-inline:0 !important;/);
   });
 });

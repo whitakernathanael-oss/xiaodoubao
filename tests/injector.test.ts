@@ -120,7 +120,7 @@ describe("theme injection payloads", () => {
       expect(css).toContain("backdrop-filter: blur(");
       expect(css).toContain("var(--dbs-sidebar-glass-base) var(--dbs-sidebar-alpha), transparent");
       expect(css).toContain('[data-testid="sidebar-section-item"] { background: transparent !important;');
-      expect(css).not.toMatch(/(?:^|[;{\n])\s*(?:color|fill|caret-color)\s*:/i);
+      expect(css.replace(/\.dbs-message-user \[data-testid="message_text_content"\] \{[^}]*\}/, "")).not.toMatch(/(?:^|[;{\n])\s*(?:color|fill|caret-color)\s*:/i);
     } finally {
       URL.createObjectURL = originalCreateObjectUrl;
       URL.revokeObjectURL = originalRevokeObjectUrl;
@@ -312,7 +312,7 @@ describe("theme injection payloads", () => {
     }
   });
 
-  it("keeps user bubbles responsive while restoring native assistant messages", async () => {
+  it("themes only the native inner user bubble while restoring native assistant messages", async () => {
     document.body.innerHTML = '<div id="root"><aside></aside><main>聊天</main></div>';
     const originalCreateObjectUrl = URL.createObjectURL;
     const originalRevokeObjectUrl = URL.revokeObjectURL;
@@ -322,7 +322,9 @@ describe("theme injection payloads", () => {
       await new Function(`return ${buildApplyExpression(DEFAULT_THEME, adapter, "data:image/png;base64,AA==", "")}`)();
       const css = document.querySelector<HTMLStyleElement>("#doubao-autoskin-style")!.textContent!;
 
-      expect(css).toMatch(/\.dbs-message-user \{ display: block !important; width: fit-content !important; min-width: min\(360px, 72%\) !important; max-width: min\(72%, 760px\) !important; overflow-wrap: anywhere !important;/);
+      expect(css).toMatch(/\.dbs-message-user \{\s*\}/);
+      expect(css).toMatch(/\.dbs-message-user \[data-testid="message_text_content"\] \{ background: color-mix\(in srgb, var\(--dbs-contrast-base\) var\(--dbs-chat-safety-mix\), var\(--dbs-user-bubble\)\) !important; color: inherit !important; border-color: var\(--dbs-chat-border\) !important; \}/);
+      expect(css).not.toMatch(/\.dbs-message-user \{[^}]*\b(?:display|width|min-width|max-width|overflow-wrap|background|border|border-radius|box-shadow|padding|margin|align|position)\b/);
       expect(css).toMatch(/\.dbs-message-assistant \{ background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding-inline: 0 !important;/);
     } finally {
       URL.createObjectURL = originalCreateObjectUrl;
