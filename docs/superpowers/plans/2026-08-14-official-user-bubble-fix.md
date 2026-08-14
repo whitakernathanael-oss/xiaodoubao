@@ -207,4 +207,3 @@ git diff --check
 - [ ] **Step 3: Merge into local master**
 
 Merge the feature branch into local `master` without pushing or creating a remote pull request.
-
